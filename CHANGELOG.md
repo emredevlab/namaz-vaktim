@@ -1,0 +1,54 @@
+# Changelog
+
+Tüm önemli değişiklikler bu dosyada belgelenir. Sürümler [SemVer](https://semver.org/) ilkelerini izler; tarihler YYYY-MM-DD biçimindedir.
+
+## 1.5.0+7 - 2026-08-24
+
+### Premium tasarım sistemi
+
+- Zümrüt yeşili + altın paletle premium tasarım sistemi: `AppTheme` üzerinden birleşik renk kartları, tipografi ve bileşen stilleri.
+- Ana ekran, vakitler, kıble, dualar, şehir seçimi ve bildirim ayarları ekranları yeni tasarım diline uyarlandı.
+
+## 1.4.0 - 2026-08-24
+
+### Vakit girdi bildirimi, gerçek şehir adı, app open reklam
+
+- **Vakit girdi bildirimi:** Hatırlatmanın yanına ek olarak, seçilen vaktin girdiği anda ikinci bir bildirim gönderilir ("... vakti girdi.").
+- **Gerçek şehir adı (reverse geocoding):** GPS ile konum belirlendiğinde koordinatlar ters geocoding ile şehir adına çözülür; ana ekran ve kıble ekranında gerçek şehir adı gösterilir.
+- **App open reklam:** `AppOpenAdManager` ile uygulama açılışına/önplana dönüşte tek kaynaktan (`assets/config/app.production.json`) yönetilen açılış reklamı eklendi.
+
+## 1.3.1 - 2026-08-23
+
+- Portre kilidi: uygulama dikey yönde kilitlendi (`screenOrientation="portrait"`).
+- Tematik uygulama ikonu: tüm `mipmap-*` yoğunluklarına programatik üretilmiş PNG'ler + `mipmap-anydpi-v26` uyarlamalı ikon.
+- Mağaza listing paketi: `store/` altında listing metinleri, gizlilik politikası taslağı, grafik gereksinim listesi.
+
+## 1.3.0 - 2026-08-23
+
+- **Yarının vakitleri:** Gece yarısını geçince ertesi günün vakitlerini görüntüleme.
+- R8 küçültme: release derlemede `minifyEnabled` + `shrinkResources` etkinleştirildi.
+- Dinamik sürüm bilgisi: Hakkında bölümünde sürüm adı/build numarası `package_info_plus` ile okunur.
+
+## 1.2.0 - 2026-08-23
+
+- Dark theme: sistem temasını izleyen koyu tema desteği (`ThemeMode.system`).
+- Kalıcı izin akışı: kalıcı olarak reddedilen konum/bildirim izinlerinde ayarlara yönlendirme.
+- Kıble GPS yedeği: sensör yokluğunda konum tabanlı kıble hesabı.
+- Dualar: 12 dua + metin kopyalama; Hakkında bölümü.
+- Widget testleri genişletildi.
+
+## 1.1.0+2 - 2026-08-23
+
+- Son-bilinen-iyi-değer cache: ağ hatasında önbellekten vakit gösterimi.
+- Parser sağlamlaştırma: ISO/HH:mm zaman formatları, eksik alan toleransı.
+- Feature-first klasör yapısına refactor.
+- GitHub Actions CI (analyze + test, core deposu için `CORE_REPO_TOKEN` fallback).
+
+## 1.0.0+1 - 2026-08-23
+
+### İlk yayın — Android MVP
+
+- Günlük namaz vakitleri (İmsak–Yatsı), sıradaki vakte geri sayım.
+- WMM2025 manyetik sapma modeliyle hassas kıble pusulası (sensör füzyonu).
+- Vakit öncesi hatırlatma bildirimleri (10/15/30 dk) + günlük imsak bildirimi.
+- Release altyapısı: imza yapılandırması, AdMob tek-kaynak yapılandırması, uygulama ikonları.

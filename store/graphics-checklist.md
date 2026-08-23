@@ -1,4 +1,4 @@
-# Play Console Grafik Gereksinimleri — Namaz Vaktim v1.3.0
+# Play Console Grafik Gereksinimleri — Namaz Vaktim v1.5.0
 
 ## Zorunlu Öğeler
 
@@ -16,14 +16,14 @@
 
 ## Önerilen Ekran Görüntüleri (öncelik sırasıyla)
 
-1. **Ana Ekran** — Bugünün vakitleri ve sıradaki vakte geri sayım görünür; uygulamanın temel değerini tek bakışta anlatır.
+1. **Ana Ekran** — Bugünün vakitleri ve sıradaki vakte geri sayım görünür; premium zümrüt + altın tasarım uygulamanın temel değerini tek bakışta anlatır.
 2. **Kıble Pusulası** — Sensör füzyonuyla çalışan pusula kadranı ve kıble yönü; ayırt edici özelliği vurgular.
-3. **Vakitler** — Yarının vakitleri veya aylık liste görünümü; v1.3.0 yeniliğini gösterir.
-4. **Dualar** — 12 dua listesi veya dua detay ekranı.
+3. **Dualar** — 31 dua listesi veya dua detay ekranı.
+4. **Şehir Seçimi / Bildirim Ayarları** — Vakit girdi bildirimi gibi yeni özellikleri gösterir.
 
 ## Notlar
 
 - Ekran görüntülerinde gerçek uygulama ekranları kullanılmalı; yanıltıcı görsel Play politikalarına aykırıdır.
 - Öne çıkan görselde "Namaz Vaktim" markası net okunmalı, metin yoğunluğu düşük tutulmalıdır.
-- Koyu temadan alınmış en az bir ekran görüntüsü eklemek v1.3.0 yeniliğini vurgular.
+- Koyu temadan alınmış en az bir ekran görüntüsü eklemek v1.5.0 premium tasarımını vurgular.
 - Tüm görsellerde aynı renk paleti ve tipografi kullanılmalıdır.

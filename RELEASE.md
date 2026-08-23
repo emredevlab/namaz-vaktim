@@ -42,6 +42,10 @@ android/app/src/main/res/
 └── mipmap-xxxhdpi/ic_launcher.png
 ```
 
+- Uyarlamalı ikon (Android 8+) ek olarak şu dosyaları kullanır; ikon değişirse bunlar da güncellenmelidir:
+  - `mipmap-*/ic_launcher_foreground.png` (ön plan katmanı, aynı yoğunluk seti)
+  - `mipmap-anydpi-v26/ic_launcher.xml` (katman tanımı)
+
 - Play Store listing ikonu (512×512): `store/icon-512.png`
 
 ## 4. WMM Manyetik Sapma Modeli
@@ -66,6 +70,15 @@ $ANDROID_HOME/build-tools/<surum>/apksigner verify --print-certs build/app/outpu
 ```
 
 Sertifika parmak izinin keystore'a ait olduğunu teyit et; "debug" sertifikası görünüyorsa `key.properties` eksik demektir.
+
+### mapping.txt Arşivi (R8)
+
+Release derlemesi `minifyEnabled true` + `shrinkResources true` ile derlenir; bu yüzden her release için üretilen **ProGuard/R8 eşleme dosyası** saklanmalıdır:
+
+- Çıktı: `build\app\outputs\mapping\release\mapping.txt`
+- Play Console'da çökme/ANR raporlarının okunabilir olması için sürüm çıkarırken aynı dosyayı Play Console > Sürüm > App Bundle Explorer / Deobfuscation files bölümüne yükle.
+- Ayrıca yerel arşiv kopyası al: örn. `store/mapping/mapping-v<surum>+<build>.txt` olarak sürüm numarasıyla sakla (her yeni sürümün mapping'i bir öncekinin üzerine YAZILMAZ — klasör içinde ayrı dosya tutulur).
+- mapping.txt kaybedilirse o sürümün obfiske çökme raporları çözülemez; bu yüzden yükleme + yerel yedek ikisi de zorunludur.
 
 ## 6. Play Store Notları
 

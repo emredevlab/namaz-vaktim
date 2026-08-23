@@ -96,6 +96,49 @@ void main() {
     expect(find.byIcon(Icons.notifications_none), findsOneWidget);
   });
 
+  testWidgets(
+      'small screen en alta kaydirilinca yatsi karti gesture alani uzerinde tam gorunur',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const gestureInset = 48.0;
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        prayerRepositoryProvider.overrideWithValue(_FullDayRepository()),
+      ],
+      child: MaterialApp(
+        home: HomeScreen(config: AppConfig.production),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(padding: const EdgeInsets.only(bottom: gestureInset)),
+          child: child!,
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.scrollUntilVisible(find.text('Yatsı'), 200);
+    for (var i = 0; i < 8; i++) {
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    final viewport = tester.getRect(find.byType(ListView));
+    final yatsiTile = tester.getRect(
+      find
+          .ancestor(
+            of: find.text('Yatsı'),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
+    );
+
+    expect(yatsiTile.top, greaterThanOrEqualTo(viewport.top));
+    expect(yatsiTile.bottom, lessThanOrEqualTo(viewport.bottom - gestureInset));
+  });
+
   testWidgets('drawer renders configured SVG logo', (tester) async {
     final config = _configWithFeatures(
       prayerTimes: false,
@@ -147,10 +190,34 @@ DailyPrayerTimes _dailyPrayerTimes() {
   );
 }
 
+DailyPrayerTimes _fullDayPrayerTimes() {
+  final date = DateTime(2026, 8, 6);
+  return DailyPrayerTimes(
+    date: date,
+    location: const UserLocation(city: 'Nevşehir'),
+    times: [
+      PrayerTime(type: PrayerType.imsak, dateTime: DateTime(2026, 8, 6, 4, 21)),
+      PrayerTime(type: PrayerType.gunes, dateTime: DateTime(2026, 8, 6, 5, 54)),
+      PrayerTime(type: PrayerType.ogle, dateTime: DateTime(2026, 8, 6, 12, 58)),
+      PrayerTime(type: PrayerType.ikindi, dateTime: DateTime(2026, 8, 6, 16, 32)),
+      PrayerTime(type: PrayerType.aksam, dateTime: DateTime(2026, 8, 6, 19, 48)),
+      PrayerTime(type: PrayerType.yatsi, dateTime: DateTime(2026, 8, 6, 21, 17)),
+    ],
+  );
+}
+
 final class _ImmediateRepository implements PrayerTimesRepository {
   @override
   Future<DailyPrayerTimes> getDaily(UserLocation location, DateTime date) =>
       Future<DailyPrayerTimes>.value(_dailyPrayerTimes());
+}
+
+final class _FullDayRepository implements PrayerTimesRepository {
+  const _FullDayRepository();
+
+  @override
+  Future<DailyPrayerTimes> getDaily(UserLocation location, DateTime date) =>
+      Future<DailyPrayerTimes>.value(_fullDayPrayerTimes());
 }
 
 final class _CompletingRepository implements PrayerTimesRepository {

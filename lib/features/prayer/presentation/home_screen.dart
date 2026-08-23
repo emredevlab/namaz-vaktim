@@ -25,6 +25,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _loadingLocation = false;
+  bool _bannerReady = false;
   BannerAd? _bannerAd;
 
   @override
@@ -62,6 +63,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           size: AdSize.banner,
           request: const AdRequest(),
           listener: BannerAdListener(
+            onAdLoaded: (_) {
+              if (mounted) setState(() => _bannerReady = true);
+            },
             onAdFailedToLoad: (ad, _) => ad.dispose(),
           ),
         )..load();
@@ -129,7 +133,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          MediaQuery.of(context).padding.bottom + 24,
+        ),
         children: [
           LocationCard(
             config: config,
@@ -137,7 +146,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             loadingLocation: _loadingLocation,
             onUseDeviceLocation: _loadDeviceLocation,
           ),
-          if (_bannerAd != null) ...[
+          if (_bannerAd != null && _bannerReady) ...[
             const SizedBox(height: 12),
             SizedBox(height: 50, child: AdWidget(ad: _bannerAd!)),
           ],

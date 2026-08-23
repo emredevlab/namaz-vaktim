@@ -1,0 +1,7 @@
+Bu sürümdeki yenilikler:
+
+• Uygulama yenilendi: zümrüt yeşili ve altın detaylarla premium tasarım.
+• Namaz vakti girdiğinde sizi uyaran bildirim seçeneği eklendi.
+• GPS ile konum bulununca gerçek şehir adınız otomatik gösterilir.
+• Açılışta kısa bir destek reklamı görüntülenebilir.
+• Hız ve kararlılık iyileştirmeleri.

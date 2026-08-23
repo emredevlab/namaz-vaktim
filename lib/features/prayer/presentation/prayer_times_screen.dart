@@ -69,9 +69,9 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
               const Card(
                 child: ListTile(
                   leading: Icon(Icons.info_outline),
-                  title: Text('Çevrimdışı örnek vakitler'),
+                  title: Text('Örnek vakitler gösteriliyor'),
                   subtitle: Text(
-                      'Sunucuya ulaşılamadı. İnternet bağlantısı kurulduğunda yenileyin.'),
+                      'Sunucuya ulaşılamadı; örnek (Nevşehir) vakitler gösteriliyor. Sunucu erişilebilir olduğunda yenilemek için aşağı çekin.'),
                 ),
               ),
             ],
@@ -332,7 +332,7 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
   }
 }
 
-/// Gradient şeritteki 'Çevrimdışı' rozeti.
+/// Gradient şeritteki 'Örnek veri' rozeti.
 class _OfflineBadge extends StatelessWidget {
   const _OfflineBadge();
 
@@ -348,10 +348,10 @@ class _OfflineBadge extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off, size: 11, color: AppTheme.goldSoft),
+          Icon(Icons.info_outline, size: 11, color: AppTheme.goldSoft),
           SizedBox(width: 4),
           Text(
-            'Çevrimdışı',
+            'Örnek veri',
             style: TextStyle(
               color: AppTheme.goldSoft,
               fontSize: 10,
