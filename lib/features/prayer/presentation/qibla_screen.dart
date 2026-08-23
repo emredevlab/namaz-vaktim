@@ -10,8 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../core/permission_manager.dart';
+import '../../../shared/design/app_theme.dart';
 import '../magnetic_declination.dart';
 import '../qibla_calculator.dart';
+import 'widgets/qibla_dial.dart';
 
 /// GPS koordinatlarını ters geocoding ile şehir adına çözer; ilk
 /// placemark'ın sırasıyla locality, subAdministrativeArea ve
@@ -224,118 +226,299 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final turn = _heading == null ? 0.0 : _qiblaBearing - _heading!;
-    final weakField = _horizontalField != null && _horizontalField! < 15;
+    final theme = Theme.of(context);
+    final heading = _heading;
+    final aligned = heading != null &&
+        QiblaDial.isAligned(heading: heading, qiblaBearing: _qiblaBearing);
     return Scaffold(
       appBar: AppBar(title: const Text('Kıble')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                children: [
-                  Transform.rotate(
-                    angle: turn * math.pi / 180,
-                    child: Icon(Icons.navigation,
-                        size: 150,
-                        color: Theme.of(context).colorScheme.primary),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _heading == null
-                        ? 'Pusula sensörü bekleniyor'
-                        : 'Kıble: ${_qiblaBearing.toStringAsFixed(1)}°',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _heading == null
-                        ? 'İvme ölçer ve manyetometre verisi bekleniyor.'
-                        : 'Telefonu düz tutun ve yön oku kıbleyi gösterene kadar dönün.',
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_declination != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Sapma düzeltmesi: ${_declination!.toStringAsFixed(1)}° '
-                      '(${_declination! >= 0 ? 'doğu' : 'batı'}) · '
-                      'Gerçek kerteriz: ${_qiblaTrueBearing?.toStringAsFixed(1)}°',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  if (weakField) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Manyetik alan zayıf; metal eşyalardan uzaklaşın.',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
+          _buildDialCard(theme, heading, aligned),
           const SizedBox(height: 16),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.info_outline),
-              title: Text('Doğru ölçüm için'),
-              subtitle: Text(
-                  'Metal eşyalardan ve mıknatıslı kılıflardan uzak durun. Kalibrasyon için cihazı sekiz şeklinde hareket ettirin.'),
-            ),
-          ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Konum bilgisi',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                      'Kıble hesabı $_locationName konumuna göre yapılmaktadır.'),
-                  if (_hasSavedLocation == false) ...[
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed:
-                          _locating ? null : _handleLocatePressed,
-                      icon: _locating
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.my_location_outlined),
-                      label: const Text('Konum kullan'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+          _buildTipsCard(),
+          const SizedBox(height: 16),
+          _buildLocationCard(theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialCard(ThemeData theme, double? heading, bool aligned) {
+    final weakField = _horizontalField != null && _horizontalField! < 15;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: AppTheme.heroGradient,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryDeep.withValues(alpha: .4),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
           ),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.6),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppTheme.darkCard,
+            borderRadius: BorderRadius.circular(30.4),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
+            child: Column(
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 330),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          QiblaDial(
+                            heading: heading,
+                            qiblaBearing: _qiblaBearing,
+                          ),
+                          if (heading == null)
+                            Center(child: _buildSensorWaitBadge()),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (heading != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildHeadingChip(heading),
+                      _buildAlignmentChip(heading, aligned),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                Text(
+                  heading == null
+                      ? 'Pusula sensörü bekleniyor'
+                      : 'Kıble: ${_qiblaBearing.toStringAsFixed(1)}°',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: AppTheme.cream,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  heading == null
+                      ? 'İvme ölçer ve manyetometre verisi bekleniyor.'
+                      : 'Telefonu düz tutun ve yön oku kıbleyi gösterene kadar dönün.',
+                  textAlign: TextAlign.center,
+                ),
+                if (_declination != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sapma düzeltmesi: ${_declination!.toStringAsFixed(1)}° '
+                    '(${_declination! >= 0 ? 'doğu' : 'batı'}) · '
+                    'Gerçek kerteriz: ${_qiblaTrueBearing?.toStringAsFixed(1)}°',
+                    style: theme.textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                if (weakField) ...[
+                  const SizedBox(height: 12),
+                  _buildWeakFieldWarning(theme),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSensorWaitBadge() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.darkCardAlt,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.gold.withValues(alpha: .45)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: .45), blurRadius: 16),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(18),
+        child: Icon(Icons.navigation, size: 30, color: AppTheme.goldSoft),
+      ),
+    );
+  }
+
+  Widget _buildHeadingChip(double heading) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.darkCardAlt,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.explore_outlined,
+                size: 15, color: AppTheme.gold),
+            const SizedBox(width: 6),
+            Text(
+              '${heading.round()}°',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.cream,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlignmentChip(double heading, bool aligned) {
+    if (aligned) {
+      return _chip(
+        icon: Icons.check_circle,
+        label: 'Hizalandı',
+        color: Colors.greenAccent,
+        background: Colors.greenAccent.withValues(alpha: .12),
+        border: Colors.greenAccent.withValues(alpha: .35),
+      );
+    }
+    final signed = ((_qiblaBearing - heading + 540) % 360) - 180;
+    return _chip(
+      icon: signed > 0 ? Icons.rotate_right : Icons.rotate_left,
+      label: 'Kıbleye dön',
+      color: AppTheme.goldSoft,
+      background: AppTheme.gold.withValues(alpha: .12),
+      border: AppTheme.gold.withValues(alpha: .35),
+    );
+  }
+
+  Widget _chip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color background,
+    required Color border,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeakFieldWarning(ThemeData theme) {
+    final error = theme.colorScheme.error;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: error.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: error.withValues(alpha: .3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 16, color: error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Manyetik alan zayıf; metal eşyalardan uzaklaşın.',
+                style: TextStyle(
+                  color: error,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTipsCard() {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.compass_calibration, color: AppTheme.gold),
+        title: const Text('Doğru ölçüm için'),
+        subtitle: const Text(
+            'Metal eşyalardan ve mıknatıslı kılıflardan uzak durun. Kalibrasyon için cihazı sekiz şeklinde hareket ettirin.'),
+      ),
+    );
+  }
+
+  Widget _buildLocationCard(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, color: AppTheme.gold),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Konum bilgisi',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+                'Kıble hesabı $_locationName konumuna göre yapılmaktadır.'),
+            if (_hasSavedLocation == false) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _locating ? null : _handleLocatePressed,
+                icon: _locating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location_outlined),
+                label: const Text('Konum kullan'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

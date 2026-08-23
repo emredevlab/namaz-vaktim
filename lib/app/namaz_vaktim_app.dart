@@ -8,6 +8,7 @@ import '../core/app_open_ad_manager.dart';
 import '../features/prayer/presentation/home_screen.dart';
 import '../features/prayer/presentation/prayer_times_screen.dart';
 import '../features/prayer/prayer_repository.dart';
+import '../shared/design/app_theme.dart';
 import 'app_navigation.dart';
 import 'app_providers.dart';
 
@@ -102,12 +103,6 @@ class _ConfiguredAppState extends ConsumerState<_ConfiguredApp>
 
   @override
   Widget build(BuildContext context) {
-    final lightScheme =
-        ColorScheme.fromSeed(seedColor: widget.config.primaryColor);
-    final darkScheme = ColorScheme.fromSeed(
-      seedColor: widget.config.primaryColor,
-      brightness: Brightness.dark,
-    );
     final networkClient = HttpNetworkClient();
     return ProviderScope(
       overrides: [
@@ -131,14 +126,8 @@ class _ConfiguredAppState extends ConsumerState<_ConfiguredApp>
         title: widget.config.name,
         debugShowCheckedModeBanner: false,
         navigatorKey: appNavigatorKey,
-        theme: ThemeData(
-            useMaterial3: true,
-            colorScheme: lightScheme,
-            scaffoldBackgroundColor: lightScheme.surface),
-        darkTheme: ThemeData(
-            useMaterial3: true,
-            colorScheme: darkScheme,
-            scaffoldBackgroundColor: darkScheme.surface),
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
         themeMode: ThemeMode.system,
         home: HomeScreen(config: widget.config),
       ),

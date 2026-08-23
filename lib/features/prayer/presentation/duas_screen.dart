@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../shared/design/app_theme.dart';
+
 class DuasScreen extends StatelessWidget {
   const DuasScreen({super.key});
 
@@ -84,52 +86,150 @@ class DuasScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Dualar')),
         body: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _duas.length,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          itemCount: _duas.length + 1,
           itemBuilder: (context, index) {
-            final dua = _duas[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ExpansionTile(
-                leading: const Icon(Icons.menu_book_outlined),
-                title: Text(dua.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.copy_outlined),
-                  tooltip: 'Panoya kopyala',
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: '${dua.title}\n\n${dua.arabic}\n\n${dua.meaning}',
-                      ),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Panoya kopyalandı')),
-                    );
-                  },
-                ),
-                childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      dua.arabic,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(height: 1.6),
-                    ),
-                  ),
-                  const Divider(height: 24),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child:
-                        Text(dua.meaning, style: const TextStyle(height: 1.5)),
-                  ),
-                ],
-              ),
-            );
+            if (index == 0) return const _DuasHeaderCard();
+            final dua = _duas[index - 1];
+            return _DuaCard(dua: dua);
           },
         ),
       );
+}
+
+class _DuasHeaderCard extends StatelessWidget {
+  const _DuasHeaderCard();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          gradient: AppTheme.heroGradient,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primary.withValues(alpha: .35),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -14,
+                bottom: -30,
+                child: Icon(
+                  Icons.auto_stories,
+                  size: 116,
+                  color: Colors.white.withValues(alpha: .08),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Dualar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -.4,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Okunuş ve anlamlarıyla namaz duaları',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .78),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _DuaCard extends StatelessWidget {
+  const _DuaCard({required this.dua});
+
+  final ({String title, String arabic, String meaning}) dua;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        leading: const Icon(Icons.menu_book_outlined),
+        title: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 26,
+              decoration: BoxDecoration(
+                gradient: AppTheme.goldGradient,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                dua.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.copy_outlined, color: AppTheme.gold),
+          tooltip: 'Panoya kopyala',
+          onPressed: () {
+            Clipboard.setData(
+              ClipboardData(
+                text: '${dua.title}\n\n${dua.arabic}\n\n${dua.meaning}',
+              ),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Panoya kopyalandı')),
+            );
+          },
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              dua.arabic,
+              style: TextStyle(
+                color: isDark ? AppTheme.goldSoft : AppTheme.primaryDeep,
+                fontSize: 19,
+                fontWeight: FontWeight.w600,
+                height: 1.7,
+              ),
+            ),
+          ),
+          const Divider(height: 24),
+          Align(
+            alignment: Alignment.centerLeft,
+            child:
+                Text(dua.meaning, style: const TextStyle(height: 1.5)),
+          ),
+        ],
+      ),
+    );
+  }
 }
