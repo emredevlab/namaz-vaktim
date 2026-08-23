@@ -35,15 +35,25 @@ class UserLocation {
 }
 
 class PrayerHomeState {
-  const PrayerHomeState({this.data, this.isLoading = false, this.error});
+  const PrayerHomeState({
+    this.data,
+    this.tomorrow,
+    this.isLoading = false,
+    this.error,
+  });
   final DailyPrayerTimes? data;
+  final DailyPrayerTimes? tomorrow;
   final bool isLoading;
   final String? error;
 
   PrayerHomeState copyWith(
-          {DailyPrayerTimes? data, bool? isLoading, String? error}) =>
+          {DailyPrayerTimes? data,
+          DailyPrayerTimes? tomorrow,
+          bool? isLoading,
+          String? error}) =>
       PrayerHomeState(
         data: data ?? this.data,
+        tomorrow: tomorrow ?? this.tomorrow,
         isLoading: isLoading ?? this.isLoading,
         error: error,
       );

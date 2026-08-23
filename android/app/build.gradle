@@ -70,8 +70,12 @@ android {
         release {
             // key.properties varsa gercek imza; yoksa debug imzayla derlenir.
             signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            // R8 kucultme + kaynak sikistirma (APK boyutu icin).
+            minifyEnabled true
+            shrinkResources true
+            // flutter-gradle-plugin minify acikken kendi varsayilan kurallarini
+            // (io.flutter.**) otomatik ekler; bizim kurallarimiz da eklenir.
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

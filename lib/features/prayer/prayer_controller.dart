@@ -84,6 +84,17 @@ final class PrayerController extends ChangeNotifier {
       } catch (_) {
         // Bildirim kurulumu başarısız olsa da namaz vakitleri gösterilmelidir.
       }
+      try {
+        // Önce bugün yüklensin; yarın gecikse/başarısız olsa bile bugünün
+        // verisi etkilenmez.
+        final tomorrowData = await _repository.getDaily(
+          effectiveLocation,
+          DateTime.now().add(const Duration(days: 1)),
+        );
+        _state = _state.copyWith(tomorrow: tomorrowData);
+      } catch (_) {
+        // Yarının vakitleri alınamazsa sessizce geç; tomorrow null kalır.
+      }
     } catch (_) {
       if (!hasExistingData) {
         _state = const PrayerHomeState(

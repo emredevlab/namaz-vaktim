@@ -42,6 +42,7 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
     final config = widget.config;
     final state = ref.watch(prayerControllerProvider).state;
     final data = state.data;
+    final tomorrow = state.tomorrow;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Namaz Vakitleri'),
@@ -120,6 +121,41 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
                   ),
                 ),
               ),
+            if (tomorrow != null) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Yarın',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              ...tomorrow.times.map(
+                (item) => Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListTile(
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    leading: CircleAvatar(
+                      radius: 18,
+                      backgroundColor:
+                          config.primaryColor.withValues(alpha: .12),
+                      foregroundColor: config.primaryColor,
+                      child: Icon(prayerIcon(item.type), size: 18),
+                    ),
+                    title: Text(prayerTypeLabel(item.type)),
+                    trailing: Text(
+                      formatPrayerTime(item.dateTime),
+                      style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: config.primaryColor,
+                              ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             const Text(
               'Vakitler bulunduğunuz şehir ve yerel saat dilimine göre gösterilir. İnternet bağlantısı olmadığında son başarılı sonuç ekranda kalır.',
