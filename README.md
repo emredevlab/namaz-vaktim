@@ -1,20 +1,10 @@
-# namaz_vaktim
+# Namaz Vaktim
 
-A new Flutter project.
+KapadokyaBulut mobil platformu için namaz vakitleri uygulaması (Android).
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Flutter 3.44.8 / Dart 3.12.2 (workspace yerel kurulumu: `.tools\flutter`)
+- Ortak çekirdek: [emredevlab/kapadokya-mobile-core](https://github.com/emredevlab/kapadokya-mobile-core) — `../kapadokya-mobile-core` path dependency
+- Sürüm çıkış adımları: [RELEASE.md](RELEASE.md)
 
 ## CI
 
@@ -27,6 +17,6 @@ Proje, GitHub Actions ile sürekli entegrasyon kullanır (`.github/workflows/ci.
   2. Önce core pakette, ardından uygulamada sırasıyla `flutter pub get`, `flutter analyze` ve `flutter test` çalıştırılır.
   3. APK derlemesi yapılmaz (imza gerektirir ve uzun sürer); kalite güvencesi analyze + test adımlarıyla sağlanır.
 
-> **Not:** `emredevlab/kapadokya-mobile-core` deposunun GitHub hesabınızda mevcut olması gerekir. Depo henüz pushlanmamışsa workflow bunu tolere eder: ilgili checkout ve sonraki adımlar atlanır, uyarıyla yeşil tamamlanır. Depo **private** ise varsayılan `GITHUB_TOKEN` yetmez; bir Personal Access Token (PAT) tanımlamanız gerekir.
+> **Not:** `emredevlab/kapadokya-mobile-core` deposu **private** olduğundan varsayılan `GITHUB_TOKEN` yetmez. Repo ayarlarından `CORE_REPO_TOKEN` secret'ı olarak `contents:read` yetkili bir Personal Access Token (PAT) ekleyin; secret yoksa workflow uyarıyla core adımlarını atlar.
 
 Workflow çalıştırmalarını deponun **Actions** sekmesinden izleyebilirsiniz: <https://github.com/emredevlab/namaz-vaktim/actions>
