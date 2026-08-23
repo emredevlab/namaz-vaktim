@@ -1,0 +1,76 @@
+name: CI
+
+"on":
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test (Flutter 3.44.8)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app (namaz-vaktim)
+        uses: actions/checkout@v4
+        with:
+          path: namaz-vaktim
+
+      - name: Checkout core package (kapadokya-mobile-core)
+        id: core
+        uses: actions/checkout@v4
+        with:
+          repository: emredevlab/kapadokya-mobile-core
+          path: kapadokya-mobile-core
+        continue-on-error: true
+
+      - name: Core repo missing warning
+        if: steps.core.outcome != 'success'
+        run: |
+          echo "::warning::emredevlab/kapadokya-mobile-core checkout edilemedi, ilgili adımlar atlandı."
+          echo "::warning::Depo pushlandıktan sonra tüm adımlar otomatik çalışacaktır."
+
+      - name: Setup JDK 17 (AGP 8.11.1 compatibility)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter 3.44.8 (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+          cache: true
+
+      - name: Core - flutter pub get
+        if: steps.core.outcome == 'success'
+        working-directory: kapadokya-mobile-core
+        run: flutter pub get
+
+      - name: Core - flutter analyze
+        if: steps.core.outcome == 'success'
+        working-directory: kapadokya-mobile-core
+        run: flutter analyze
+
+      - name: Core - flutter test
+        if: steps.core.outcome == 'success'
+        working-directory: kapadokya-mobile-core
+        run: flutter test
+
+      - name: App - flutter pub get
+        if: steps.core.outcome == 'success'
+        working-directory: namaz-vaktim
+        run: flutter pub get
+
+      - name: App - flutter analyze
+        if: steps.core.outcome == 'success'
+        working-directory: namaz-vaktim
+        run: flutter analyze
+
+      - name: App - flutter test
+        if: steps.core.outcome == 'success'
+        working-directory: namaz-vaktim
+        run: flutter test

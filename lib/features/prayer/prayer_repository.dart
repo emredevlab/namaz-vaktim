@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:kapadokya_mobile_core/kapadokya_mobile_core.dart';
 
 import 'prayer_models.dart';
+import 'prayer_times_cache.dart';
 
 abstract interface class PrayerTimesRepository {
   Future<DailyPrayerTimes> getDaily(UserLocation location, DateTime date);
@@ -26,7 +27,11 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
     if (location.longitude != null) {
       query['longitude'] = '${location.longitude}';
     }
-    final result = await network.get(endpoint.replace(queryParameters: query));
+    final requestUri = endpoint.replace(queryParameters: <String, String>{
+      ...endpoint.queryParameters,
+      ...query,
+    });
+    final result = await network.get(requestUri);
     return result.fold(
       success: (body) => _parse(body, location, date),
       failure: (failure) => throw StateError(failure.message),
@@ -44,7 +49,9 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
       final times = <PrayerTime>[];
       for (final type in PrayerType.values) {
         final value = rawTimes[type.name] ?? rawTimes[_apiKey(type)];
-        if (value == null) continue;
+        if (value == null || (value is String && value.trim().isEmpty)) {
+          continue;
+        }
         times.add(PrayerTime(type: type, dateTime: _parseTime(value, date)));
       }
       if (times.isEmpty) throw const FormatException('empty times');
@@ -57,16 +64,27 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
   }
 
   DateTime _parseTime(Object value, DateTime date) {
-    if (value is String && value.contains('T')) {
-      return DateTime.parse(value).toLocal();
+    final text = value is String ? value.trim() : '$value';
+    if (_isoPattern.hasMatch(text)) {
+      return DateTime.parse(text.replaceFirst(' ', 'T')).toLocal();
     }
-    final text = '$value';
     final parts = text.split(':');
-    if (parts.length < 2) throw const FormatException('invalid time');
-    final hour = int.parse(parts[0]);
-    final minute = int.parse(parts[1]);
+    if (parts.length < 2) throw FormatException('invalid time "$text"');
+    final hour = int.tryParse(parts[0].trim());
+    final minute = int.tryParse(parts[1].trim());
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      throw FormatException('invalid time "$text"');
+    }
     return DateTime(date.year, date.month, date.day, hour, minute);
   }
+
+  static final RegExp _isoPattern =
+      RegExp(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?');
 
   String _apiKey(PrayerType type) => switch (type) {
         PrayerType.imsak => 'fajr',
@@ -82,19 +100,28 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
 }
 
 final class ResilientPrayerTimesRepository implements PrayerTimesRepository {
-  const ResilientPrayerTimesRepository(
-      {required this.primary,
-      this.fallback = const DemoPrayerTimesRepository()});
+  const ResilientPrayerTimesRepository({
+    required this.primary,
+    this.fallback = const DemoPrayerTimesRepository(),
+    this.cache,
+  });
 
   final PrayerTimesRepository primary;
   final PrayerTimesRepository fallback;
+  final KeyValueStorage? cache;
 
   @override
   Future<DailyPrayerTimes> getDaily(
       UserLocation location, DateTime date) async {
+    final KeyValueStorage? storage = cache;
+    final store = storage == null ? null : PrayerTimesCache(storage: storage);
     try {
-      return await primary.getDaily(location, date);
+      final result = await primary.getDaily(location, date);
+      if (store != null && !result.isFallback) await store.write(result);
+      return result;
     } catch (_) {
+      final cached = await store?.read(location.city, date);
+      if (cached != null) return cached;
       return fallback.getDaily(location, date);
     }
   }

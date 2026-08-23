@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:namaz_vaktim/app/app_providers.dart';
 import 'package:namaz_vaktim/config/app_config.dart';
+import 'package:namaz_vaktim/features/prayer/presentation/home_screen.dart';
 import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
 import 'package:namaz_vaktim/features/prayer/prayer_repository.dart';
-import 'package:namaz_vaktim/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
