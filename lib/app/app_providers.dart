@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/app_open_ad_manager.dart';
 import '../core/notification_service.dart';
 import '../core/permission_manager.dart';
 import '../features/prayer/prayer_controller.dart';
@@ -13,6 +14,8 @@ final sharedPreferencesProvider = Provider<SharedPreferences>(
       'sharedPreferencesProvider main() icinde override edilmelidir.'),
 );
 
+final appOpenAdManagerProvider =
+    Provider<AppOpenAdManager>((ref) => AppOpenAdManager());
 final permissionManagerProvider =
     Provider<PermissionManager>((ref) => const PermissionHandlerManager());
 final notificationSchedulerProvider = Provider<LocalNotificationScheduler>(

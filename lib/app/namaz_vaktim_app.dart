@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapadokya_mobile_core/kapadokya_mobile_core.dart';
 
 import '../config/app_config.dart';
+import '../core/app_open_ad_manager.dart';
 import '../features/prayer/presentation/home_screen.dart';
 import '../features/prayer/presentation/prayer_times_screen.dart';
 import '../features/prayer/prayer_repository.dart';
@@ -42,11 +43,19 @@ class _ConfiguredApp extends ConsumerStatefulWidget {
   ConsumerState<_ConfiguredApp> createState() => _ConfiguredAppState();
 }
 
-class _ConfiguredAppState extends ConsumerState<_ConfiguredApp> {
+class _ConfiguredAppState extends ConsumerState<_ConfiguredApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     notificationRouteHandler = _openRoute;
+    final ads = widget.config.ads;
+    if (ads.enabled && ads.appOpenId.trim().isNotEmpty) {
+      Future<void>.microtask(() {
+        ref.read(appOpenAdManagerProvider).load(ads.appOpenId);
+      });
+    }
     Future<void>.microtask(() async {
       // Bildirime dokunularak soğuk başlatıldıysa rota isteğini işle.
       final scheduler = ref.read(notificationSchedulerProvider);
@@ -56,7 +65,24 @@ class _ConfiguredAppState extends ConsumerState<_ConfiguredApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      return;
+    }
+    final manager = ref.read(appOpenAdManagerProvider);
+    if (AppOpenAdManager.shouldShowOnResume(
+      adLoaded: manager.isLoaded,
+      isShowing: manager.isShowing,
+      state: state,
+    )) {
+      manager.showIfAvailable();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (notificationRouteHandler == _openRoute) {
       notificationRouteHandler = null;
     }

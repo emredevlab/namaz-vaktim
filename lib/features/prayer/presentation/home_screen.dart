@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -199,17 +200,48 @@ final class DeviceLocationFlow {
       throw StateError('Konum izni verilmedi.');
     }
     final position = await Geolocator.getCurrentPosition();
+    final city = await resolveCityName(position.latitude, position.longitude) ??
+        'Mevcut konum';
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(savedCityKey, 'Mevcut konum');
+    await preferences.setString(savedCityKey, city);
     await preferences.setDouble(savedLatitudeKey, position.latitude);
     await preferences.setDouble(savedLongitudeKey, position.longitude);
     await _ref.read(prayerControllerProvider).load(
           location: UserLocation(
-            city: 'Mevcut konum',
+            city: city,
             latitude: position.latitude,
             longitude: position.longitude,
           ),
         );
+  }
+
+  /// GPS koordinatlarını ters geocoding ile şehir adına çözer; ilk
+  /// placemark'ın sırasıyla locality, subAdministrativeArea ve
+  /// administrativeArea değerlerinden boş olmayan ilki döner.
+  /// Sonuç yoksa (çevrimdışı/servis yok/hata) null döner.
+  static Future<String?> resolveCityName(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final placemarks =
+          await Geocoding().placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isEmpty) return null;
+      final placemark = placemarks.first;
+      for (final candidate in <String?>[
+        placemark.locality,
+        placemark.subAdministrativeArea,
+        placemark.administrativeArea,
+      ]) {
+        if (candidate != null && candidate.trim().isNotEmpty) {
+          return candidate;
+        }
+      }
+      return null;
+    } catch (_) {
+      // Geocoding servisi kullanılamazsa çağıran taraf yedek ismi kullanır.
+      return null;
+    }
   }
 
   /// Kalıcı olarak reddedilen konum izni için kullanıcıyı sistem

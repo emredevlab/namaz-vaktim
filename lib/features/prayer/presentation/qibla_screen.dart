@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,32 @@ import '../../../app/app_providers.dart';
 import '../../../core/permission_manager.dart';
 import '../magnetic_declination.dart';
 import '../qibla_calculator.dart';
+
+/// GPS koordinatlarını ters geocoding ile şehir adına çözer; ilk
+/// placemark'ın sırasıyla locality, subAdministrativeArea ve
+/// administrativeArea değerlerinden boş olmayan ilki döner.
+/// Sonuç yoksa (çevrimdışı/servis yok/hata) null döner.
+Future<String?> _resolveCityName(double latitude, double longitude) async {
+  try {
+    final placemarks =
+        await Geocoding().placemarkFromCoordinates(latitude, longitude);
+    if (placemarks.isEmpty) return null;
+    final placemark = placemarks.first;
+    for (final candidate in <String?>[
+      placemark.locality,
+      placemark.subAdministrativeArea,
+      placemark.administrativeArea,
+    ]) {
+      if (candidate != null && candidate.trim().isNotEmpty) {
+        return candidate;
+      }
+    }
+    return null;
+  } catch (_) {
+    // Geocoding servisi kullanılamazsa yedek isim kullanılır.
+    return null;
+  }
+}
 
 class QiblaScreen extends ConsumerStatefulWidget {
   const QiblaScreen({super.key, this.onLocate});
@@ -161,11 +188,15 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
         return;
       }
       final position = await Geolocator.getCurrentPosition();
+      final city = await _resolveCityName(
+        position.latitude,
+        position.longitude,
+      );
       if (!mounted) return;
       _applyLocation(
         latitude: position.latitude,
         longitude: position.longitude,
-        city: 'Mevcut konum',
+        city: city ?? 'Mevcut konum',
       );
     } catch (_) {
       messenger.showSnackBar(

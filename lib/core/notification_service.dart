@@ -9,17 +9,23 @@ class NotificationPreferences {
   const NotificationPreferences(
       {this.enabled = true,
       this.minutesBefore = 10,
-      this.dailyReminder = true});
+      this.dailyReminder = true,
+      this.notifyAtTime = true});
   final bool enabled;
   final int minutesBefore;
   final bool dailyReminder;
+  final bool notifyAtTime;
 
   NotificationPreferences copyWith(
-          {bool? enabled, int? minutesBefore, bool? dailyReminder}) =>
+          {bool? enabled,
+          int? minutesBefore,
+          bool? dailyReminder,
+          bool? notifyAtTime}) =>
       NotificationPreferences(
         enabled: enabled ?? this.enabled,
         minutesBefore: minutesBefore ?? this.minutesBefore,
         dailyReminder: dailyReminder ?? this.dailyReminder,
+        notifyAtTime: notifyAtTime ?? this.notifyAtTime,
       );
 }
 
@@ -32,6 +38,7 @@ final class NotificationPreferencesStore {
   static const _enabledKey = 'notifications.enabled';
   static const _minutesBeforeKey = 'notifications.minutes_before';
   static const _dailyReminderKey = 'notifications.daily_reminder';
+  static const _notifyAtTimeKey = 'notifications.notify_at_time';
 
   final SharedPreferences? _preferences;
   final Map<String, Object?>? _memory;
@@ -42,6 +49,7 @@ final class NotificationPreferencesStore {
         enabled: _get(_enabledKey) as bool? ?? true,
         minutesBefore: _get(_minutesBeforeKey) as int? ?? 10,
         dailyReminder: _get(_dailyReminderKey) as bool? ?? true,
+        notifyAtTime: _get(_notifyAtTimeKey) as bool? ?? true,
       );
 
   Future<void> write(NotificationPreferences value) async {
@@ -49,17 +57,22 @@ final class NotificationPreferencesStore {
       await preferences.setBool(_enabledKey, value.enabled);
       await preferences.setInt(_minutesBeforeKey, value.minutesBefore);
       await preferences.setBool(_dailyReminderKey, value.dailyReminder);
+      await preferences.setBool(_notifyAtTimeKey, value.notifyAtTime);
     } else {
       _memory![_enabledKey] = value.enabled;
       _memory[_minutesBeforeKey] = value.minutesBefore;
       _memory[_dailyReminderKey] = value.dailyReminder;
+      _memory[_notifyAtTimeKey] = value.notifyAtTime;
     }
   }
 }
 
 abstract interface class LocalNotificationScheduler {
   Future<void> schedulePrayer(
-      {required int id, required String title, required DateTime time});
+      {required int id,
+      required String title,
+      required String body,
+      required DateTime time});
 
   /// [anchor] zamanının saat/dakika bileşeniyle her gün tekrarlanan bildirim.
   Future<void> scheduleDailyReminder({
@@ -112,8 +125,17 @@ final class PrayerNotificationPlanner {
       await scheduler.schedulePrayer(
         id: request.id,
         title: request.title,
+        body: 'Namaz vaktiniz yaklaşıyor.',
         time: scheduledTime,
       );
+      if (preferences.notifyAtTime) {
+        await scheduler.schedulePrayer(
+          id: request.id + 50,
+          title: request.title,
+          body: '${request.title} vakti girdi.',
+          time: request.prayerTime,
+        );
+      }
     }
     if (preferences.dailyReminder && requests.isNotEmpty) {
       // Günlük hatırlatma, imsak vaktine göre her gün tekrarlanır.
@@ -189,6 +211,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   Future<void> schedulePrayer({
     required int id,
     required String title,
+    required String body,
     required DateTime time,
   }) async {
     await _ensureInitialized();
@@ -196,7 +219,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     await _zonedSchedule(
       id: id,
       title: title,
-      body: 'Namaz vaktiniz yaklaşıyor.',
+      body: body,
       time: time,
       payload: 'route:/prayer-times',
       daily: false,
@@ -266,7 +289,10 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
   const NoopNotificationScheduler();
   @override
   Future<void> schedulePrayer(
-      {required int id, required String title, required DateTime time}) async {}
+      {required int id,
+      required String title,
+      required String body,
+      required DateTime time}) async {}
   @override
   Future<void> scheduleDailyReminder({
     required int id,

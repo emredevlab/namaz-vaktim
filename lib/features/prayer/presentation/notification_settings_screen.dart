@@ -16,6 +16,7 @@ class _NotificationSettingsScreenState
     extends ConsumerState<NotificationSettingsScreen> {
   late bool _enabled;
   late bool _dailyReminder;
+  late bool _notifyAtTime;
   late int _minutesBefore;
 
   @override
@@ -25,6 +26,7 @@ class _NotificationSettingsScreenState
         ref.read(prayerControllerProvider).notificationPreferences;
     _enabled = preferences.enabled;
     _dailyReminder = preferences.dailyReminder;
+    _notifyAtTime = preferences.notifyAtTime;
     _minutesBefore = preferences.minutesBefore;
   }
 
@@ -35,6 +37,7 @@ class _NotificationSettingsScreenState
               enabled: _enabled,
               minutesBefore: _minutesBefore,
               dailyReminder: _dailyReminder,
+              notifyAtTime: _notifyAtTime,
             ),
           );
       if (mounted) Navigator.pop(context);
@@ -59,6 +62,15 @@ class _NotificationSettingsScreenState
               subtitle: const Text('Vakit yaklaşınca bildirim gönder'),
               value: _enabled,
               onChanged: (value) => setState(() => _enabled = value),
+            ),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vakit girişinde bildir'),
+              subtitle: const Text('Vaktin kendisinde de bildirim gönder'),
+              value: _notifyAtTime,
+              onChanged: _enabled
+                  ? (value) => setState(() => _notifyAtTime = value)
+                  : null,
             ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,

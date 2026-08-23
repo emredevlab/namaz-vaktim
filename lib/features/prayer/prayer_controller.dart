@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/notification_service.dart';
+import '../../shared/formatting.dart';
 import 'prayer_models.dart';
 import 'prayer_repository.dart';
 
@@ -45,7 +46,7 @@ final class PrayerController extends ChangeNotifier {
         for (final prayerTime in data.times)
           PrayerNotificationRequest(
             id: prayerTime.type.index,
-            title: prayerTime.type.name,
+            title: prayerTypeLabel(prayerTime.type),
             prayerTime: prayerTime.dateTime,
           ),
       ],
@@ -75,7 +76,7 @@ final class PrayerController extends ChangeNotifier {
             for (final prayerTime in data.times)
               PrayerNotificationRequest(
                 id: prayerTime.type.index,
-                title: prayerTime.type.name,
+                title: prayerTypeLabel(prayerTime.type),
                 prayerTime: prayerTime.dateTime,
               ),
           ],

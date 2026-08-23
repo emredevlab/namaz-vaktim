@@ -7,6 +7,7 @@ import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
 final class _RecordingScheduler implements LocalNotificationScheduler {
   bool cancelled = false;
   final times = <DateTime>[];
+  final requests = <({int id, String title, String body, DateTime time})>[];
   final dailyAnchors = <DateTime>[];
 
   @override
@@ -16,9 +17,12 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
   Future<void> schedulePrayer({
     required int id,
     required String title,
+    required String body,
     required DateTime time,
-  }) async =>
-      times.add(time);
+  }) async {
+    times.add(time);
+    requests.add((id: id, title: title, body: body, time: time));
+  }
 
   @override
   Future<void> scheduleDailyReminder({
@@ -31,6 +35,20 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
 
   @override
   Future<String?> initialPayload() async => null;
+}
+
+const _approachBody = 'Namaz vaktiniz yaklaşıyor.';
+
+List<PrayerNotificationRequest> _allPrayerRequests() {
+  final base = DateTime(2026, 8, 23, 4);
+  return [
+    for (final (index, type) in PrayerType.values.indexed)
+      PrayerNotificationRequest(
+        id: type.index,
+        title: 'Vakit $index',
+        prayerTime: base.add(Duration(hours: index + 1)),
+      ),
+  ];
 }
 
 void main() {
@@ -74,12 +92,58 @@ void main() {
           prayerTime: prayerTime,
         ),
       ],
-      const NotificationPreferences(minutesBefore: 15),
+      const NotificationPreferences(minutesBefore: 15, notifyAtTime: false),
     );
 
     expect(scheduler.cancelled, isTrue);
     expect(scheduler.times.single,
         prayerTime.subtract(const Duration(minutes: 15)));
+    expect(scheduler.requests.single.body, _approachBody);
+  });
+
+  test('planner schedules an on-time notification when notifyAtTime is true',
+      () async {
+    final scheduler = _RecordingScheduler();
+    final planner = PrayerNotificationPlanner(scheduler: scheduler);
+    final requests = _allPrayerRequests();
+
+    await planner.synchronize(
+        requests, const NotificationPreferences(notifyAtTime: true));
+
+    expect(scheduler.requests.length, PrayerType.values.length * 2);
+    for (final request in requests) {
+      final approach =
+          scheduler.requests.singleWhere((scheduled) => scheduled.id == request.id);
+      expect(approach.title, request.title);
+      expect(approach.body, _approachBody);
+      expect(approach.time,
+          request.prayerTime.subtract(const Duration(minutes: 10)));
+
+      final onTime = scheduler.requests
+          .singleWhere((scheduled) => scheduled.id == request.id + 50);
+      expect(onTime.title, request.title);
+      expect(onTime.body, '${request.title} vakti girdi.');
+      expect(onTime.time, request.prayerTime);
+    }
+  });
+
+  test('planner skips on-time notifications when notifyAtTime is false',
+      () async {
+    final scheduler = _RecordingScheduler();
+    final planner = PrayerNotificationPlanner(scheduler: scheduler);
+    final requests = _allPrayerRequests();
+
+    await planner.synchronize(
+        requests, const NotificationPreferences(notifyAtTime: false));
+
+    expect(scheduler.requests.length, PrayerType.values.length);
+    for (final scheduled in scheduler.requests) {
+      expect(scheduled.id, lessThan(50));
+      expect(scheduled.body, _approachBody);
+      final source = requests.singleWhere((request) => request.id == scheduled.id);
+      expect(scheduled.time,
+          source.prayerTime.subtract(const Duration(minutes: 10)));
+    }
   });
 
   test('notification planner rejects unsupported lead times', () async {
