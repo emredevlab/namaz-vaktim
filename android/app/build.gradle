@@ -1,0 +1,85 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// AdMob uygulama kimligini tek kaynaktan (assets/config/app.production.json) oku.
+// Dosyada gecerli kimlik yoksa Google test kimligine dus.
+def admobTestAppId = 'ca-app-pub-3940256099942544~3347511713'
+def admobAppId = admobTestAppId
+try {
+    def configFile = file('../../assets/config/app.production.json')
+    if (configFile.exists()) {
+        def config = new JsonSlurper().parseText(configFile.text)
+        def candidate = config?.ads?.androidAppId
+        if (candidate instanceof String && candidate.startsWith('ca-app-pub-') &&
+                !candidate.startsWith('ca-app-pub-3940256099942544')) {
+            admobAppId = candidate
+        }
+    }
+} catch (Exception ignored) {
+    println 'Uyari: AdMob yapilandirmasi okunamadi, test kimligi kullaniliyor.'
+}
+
+android {
+    namespace "com.kapadokyabulut.namazvaktim"
+    compileSdkVersion 36
+    ndkVersion "28.2.13676358"
+
+    defaultConfig {
+        applicationId "com.kapadokyabulut.namazvaktim"
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion 36
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+        // Flutter eklentisinin applicationName placeholder'ini korumak icin += kullanilir.
+        manifestPlaceholders += [adsApplicationId: admobAppId]
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    if (keystorePropertiesFile.exists()) {
+        signingConfigs {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // key.properties varsa gercek imza; yoksa debug imzayla derlenir.
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+}
+
+flutter {
+    source "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
+}

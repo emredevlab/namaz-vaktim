@@ -1,0 +1,50 @@
+enum PrayerType { imsak, gunes, ogle, ikindi, aksam, yatsi }
+
+class PrayerTime {
+  const PrayerTime({required this.type, required this.dateTime});
+  final PrayerType type;
+  final DateTime dateTime;
+}
+
+class DailyPrayerTimes {
+  const DailyPrayerTimes({
+    required this.date,
+    required this.location,
+    required this.times,
+    this.isFallback = false,
+  });
+  final DateTime date;
+  final UserLocation location;
+  final List<PrayerTime> times;
+  final bool isFallback;
+
+  PrayerTime? get next {
+    final now = DateTime.now();
+    for (final time in times) {
+      if (time.dateTime.isAfter(now)) return time;
+    }
+    return null;
+  }
+}
+
+class UserLocation {
+  const UserLocation({required this.city, this.latitude, this.longitude});
+  final String city;
+  final double? latitude;
+  final double? longitude;
+}
+
+class PrayerHomeState {
+  const PrayerHomeState({this.data, this.isLoading = false, this.error});
+  final DailyPrayerTimes? data;
+  final bool isLoading;
+  final String? error;
+
+  PrayerHomeState copyWith(
+          {DailyPrayerTimes? data, bool? isLoading, String? error}) =>
+      PrayerHomeState(
+        data: data ?? this.data,
+        isLoading: isLoading ?? this.isLoading,
+        error: error,
+      );
+}

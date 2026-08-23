@@ -1,0 +1,30 @@
+{
+  "brand": {
+    "name": "Namaz Vaktim",
+    "website": "https://kapadokyabulut.com.tr",
+    "primaryColor": "#0D6B5D",
+    "logoAsset": "assets/config/namaz_vaktim_logo.svg"
+  },
+  "endpoints": {
+    "api": "https://api.kapadokyabulut.com.tr",
+    "web": "https://kapadokyabulut.com.tr"
+  },
+  "ads": {
+    "enabled": true,
+    "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+    "appOpenId": "ca-app-pub-3940256099942544/9257395921",
+    "bannerId": "ca-app-pub-3940256099942544/6300978111"
+  },
+  "drawerItems": [
+    { "title": "Ana Sayfa", "route": "/", "icon": "home" },
+    { "title": "Namaz Vakitleri", "route": "/prayer-times", "icon": "schedule" },
+    { "title": "Kıble", "route": "/qibla", "icon": "explore" },
+    { "title": "Dualar", "route": "/prayers", "icon": "menu_book" },
+    { "title": "Bildirim Ayarları", "route": "/settings/notifications", "icon": "notifications" }
+  ],
+  "features": {
+    "prayerTimes": true,
+    "notifications": true,
+    "webContent": true
+  }
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Namaz Vaktim</title>
+  <desc id="desc">A teal crescent and minaret mark</desc>
+  <rect width="512" height="512" rx="112" fill="#0D6B5D"/>
+  <circle cx="238" cy="210" r="104" fill="#F7F3E8"/>
+  <circle cx="282" cy="178" r="104" fill="#0D6B5D"/>
+  <path d="M126 370h260v28H126z" fill="#F7F3E8"/>
+  <path d="M170 370V250h44v120zm-12-120h68l-34-34zM280 370V286h34v84zm-8-84h50l-25-26z" fill="#F7F3E8"/>
+  <path d="M189 216h6" stroke="#0D6B5D" stroke-width="8" stroke-linecap="round"/>
+</svg>

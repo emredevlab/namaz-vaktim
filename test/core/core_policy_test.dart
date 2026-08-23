@@ -1,0 +1,175 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:namaz_vaktim/core/permission_manager.dart';
+import 'package:namaz_vaktim/core/notification_service.dart';
+import 'package:namaz_vaktim/core/web_navigation_policy.dart';
+import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
+
+final class _RecordingScheduler implements LocalNotificationScheduler {
+  bool cancelled = false;
+  final times = <DateTime>[];
+  final dailyAnchors = <DateTime>[];
+
+  @override
+  Future<void> cancelAll() async => cancelled = true;
+
+  @override
+  Future<void> schedulePrayer({
+    required int id,
+    required String title,
+    required DateTime time,
+  }) async =>
+      times.add(time);
+
+  @override
+  Future<void> scheduleDailyReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime anchor,
+  }) async =>
+      dailyAnchors.add(anchor);
+
+  @override
+  Future<String?> initialPayload() async => null;
+}
+
+void main() {
+  group('WebNavigationPolicy', () {
+    const policy = WebNavigationPolicy(
+      allowedOrigins: {'https://example.com'},
+    );
+
+    test('allows HTTPS URLs from configured origins', () {
+      expect(
+        policy.decide(Uri.parse('https://example.com/page')),
+        WebNavigationDecision.internal,
+      );
+    });
+
+    test('sends HTTPS URLs from other origins externally', () {
+      expect(
+        policy.decide(Uri.parse('https://other.example/page')),
+        WebNavigationDecision.external,
+      );
+    });
+
+    test('rejects non-HTTPS URLs', () {
+      expect(
+        policy.decide(Uri.parse('http://example.com/page')),
+        WebNavigationDecision.rejected,
+      );
+    });
+  });
+
+  test('notification planner schedules the configured lead time', () async {
+    final scheduler = _RecordingScheduler();
+    final planner = PrayerNotificationPlanner(scheduler: scheduler);
+    final prayerTime = DateTime(2026, 8, 7, 12);
+
+    await planner.synchronize(
+      [
+        PrayerNotificationRequest(
+          id: 1,
+          title: 'Öğle vakti',
+          prayerTime: prayerTime,
+        ),
+      ],
+      const NotificationPreferences(minutesBefore: 15),
+    );
+
+    expect(scheduler.cancelled, isTrue);
+    expect(scheduler.times.single,
+        prayerTime.subtract(const Duration(minutes: 15)));
+  });
+
+  test('notification planner rejects unsupported lead times', () async {
+    final scheduler = _RecordingScheduler();
+
+    expect(
+      () => PrayerNotificationPlanner(scheduler: scheduler).synchronize(
+        const [],
+        const NotificationPreferences(minutesBefore: 5),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('daily reminder schedules a repeating notification at imsak', () async {
+    final scheduler = _RecordingScheduler();
+    final planner = PrayerNotificationPlanner(scheduler: scheduler);
+    final imsakTime = DateTime(2026, 8, 22, 4, 21);
+
+    await planner.synchronize(
+      [
+        PrayerNotificationRequest(
+          id: PrayerType.imsak.index,
+          title: 'İmsak',
+          prayerTime: imsakTime,
+        ),
+        PrayerNotificationRequest(
+          id: PrayerType.gunes.index,
+          title: 'Güneş',
+          prayerTime: imsakTime.add(const Duration(hours: 2)),
+        ),
+      ],
+      const NotificationPreferences(dailyReminder: true),
+    );
+
+    expect(scheduler.dailyAnchors.single, imsakTime);
+    expect(
+      PrayerNotificationPlanner.dailyReminderNotificationId,
+      isNot(anyOf(PrayerType.values.map((type) => type.index))),
+    );
+  });
+
+  test('daily reminder is skipped when notifications are disabled', () async {
+    final scheduler = _RecordingScheduler();
+    final planner = PrayerNotificationPlanner(scheduler: scheduler);
+
+    await planner.synchronize(
+      [
+        PrayerNotificationRequest(
+          id: PrayerType.imsak.index,
+          title: 'İmsak',
+          prayerTime: DateTime(2026, 8, 22, 4, 21),
+        ),
+      ],
+      const NotificationPreferences(enabled: false),
+    );
+
+    expect(scheduler.times, isEmpty);
+    expect(scheduler.dailyAnchors, isEmpty);
+  });
+
+  test('permission rationale explains each permission in Turkish', () {
+    const policy = PermissionRationalePolicy();
+
+    final notification = policy.forPermission(AppPermission.notification);
+    final location = policy.forPermission(AppPermission.location);
+
+    expect(notification.title, 'Bildirim izni gerekli');
+    expect(notification.message, contains('hatırlatma'));
+    expect(notification.actionLabel, 'Bildirimlere izin ver');
+    expect(location.title, 'Konum izni gerekli');
+    expect(location.message, contains('namaz vakitlerini'));
+    expect(location.actionLabel, 'Konuma izin ver');
+    expect(
+      policy.permanentlyDeniedMessage(AppPermission.location),
+      contains('Android ayarlarından'),
+    );
+  });
+
+  test('noop permission manager fails closed', () async {
+    const manager = NoopPermissionManager();
+
+    expect(
+      await manager.status(AppPermission.location),
+      PermissionStatus.denied,
+    );
+    expect(
+      await manager.request(AppPermission.notification),
+      PermissionStatus.denied,
+    );
+    expect(await manager.openSettings(), isFalse);
+  });
+}
