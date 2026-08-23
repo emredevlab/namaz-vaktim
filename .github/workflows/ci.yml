@@ -10,7 +10,7 @@ name: CI
 
 jobs:
   analyze-and-test:
-    name: Analyze & Test (Flutter 3.44.8)
+    name: Analyze and Test (Flutter 3.44.8)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout app (namaz-vaktim)
@@ -24,7 +24,7 @@ jobs:
         with:
           repository: emredevlab/kapadokya-mobile-core
           # Core deposu ozel oldugundan GITHUB_TOKEN yeterli degildir;
-          # CORE_REPO_TOKEN secret'i (contents:read yetkili PAT) eklenmelidir.
+          # CORE_REPO_TOKEN secret'i (contents:read yetkili PAT) gerekir.
           token: ${{ secrets.CORE_REPO_TOKEN || github.token }}
           path: kapadokya-mobile-core
         continue-on-error: true
@@ -32,8 +32,8 @@ jobs:
       - name: Core repo missing warning
         if: steps.core.outcome != 'success'
         run: |
-          echo "::warning::emredevlab/kapadokya-mobile-core checkout edilemedi, ilgili adımlar atlandı."
-          echo "::warning::Depo pushlandıktan sonra tüm adımlar otomatik çalışacaktır."
+          echo "::warning::kapadokya-mobile-core checkout edilemedi, core adimlari atlandi."
+          echo "::warning::Depo pushlandiktan sonra tum adimlar otomatik calisacaktir."
 
       - name: Setup JDK 17 (AGP 8.11.1 compatibility)
         uses: actions/setup-java@v4
