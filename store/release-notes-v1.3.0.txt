@@ -1,0 +1,5 @@
+Bu sürümdeki yenilikler:
+
+• Yarının namaz vakitlerini görüntüleme eklendi.
+• Koyu tema desteği geldi.
+• Hız ve performans iyileştirmeleri yapıldı.
