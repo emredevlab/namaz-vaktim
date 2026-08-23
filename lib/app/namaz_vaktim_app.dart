@@ -76,7 +76,12 @@ class _ConfiguredAppState extends ConsumerState<_ConfiguredApp> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(seedColor: widget.config.primaryColor);
+    final lightScheme =
+        ColorScheme.fromSeed(seedColor: widget.config.primaryColor);
+    final darkScheme = ColorScheme.fromSeed(
+      seedColor: widget.config.primaryColor,
+      brightness: Brightness.dark,
+    );
     final networkClient = HttpNetworkClient();
     return ProviderScope(
       overrides: [
@@ -102,8 +107,13 @@ class _ConfiguredAppState extends ConsumerState<_ConfiguredApp> {
         navigatorKey: appNavigatorKey,
         theme: ThemeData(
             useMaterial3: true,
-            colorScheme: scheme,
-            scaffoldBackgroundColor: scheme.surface),
+            colorScheme: lightScheme,
+            scaffoldBackgroundColor: lightScheme.surface),
+        darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: darkScheme,
+            scaffoldBackgroundColor: darkScheme.surface),
+        themeMode: ThemeMode.system,
         home: HomeScreen(config: widget.config),
       ),
     );

@@ -23,9 +23,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  static const _savedCityKey = 'saved_city';
-  static const _savedLatitudeKey = 'saved_latitude';
-  static const _savedLongitudeKey = 'saved_longitude';
   bool _loadingLocation = false;
   BannerAd? _bannerAd;
 
@@ -38,28 +35,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _loadDeviceLocation() async {
     setState(() => _loadingLocation = true);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        throw StateError('Konum servisi kapalı.');
-      }
-      final manager = ref.read(permissionManagerProvider);
-      var status = await manager.status(AppPermission.location);
-      if (status == PermissionStatus.denied) {
-        status = await manager.request(AppPermission.location);
-      }
-      if (status != PermissionStatus.granted) {
-        throw StateError('Konum izni verilmedi.');
-      }
-      final position = await Geolocator.getCurrentPosition();
-      final location = UserLocation(
-        city: 'Mevcut konum',
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_savedCityKey, location.city);
-      await preferences.setDouble(_savedLatitudeKey, position.latitude);
-      await preferences.setDouble(_savedLongitudeKey, position.longitude);
-      await ref.read(prayerControllerProvider).load(location: location);
+      await DeviceLocationFlow(ref).loadFromDevice();
+    } on LocationPermissionPermanentlyDeniedException {
+      if (mounted) DeviceLocationFlow(ref).showSettingsPrompt(context);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,13 +71,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _restoreSavedLocation() async {
     try {
       final preferences = await SharedPreferences.getInstance();
-      final city = preferences.getString(_savedCityKey);
+      final city = preferences.getString(DeviceLocationFlow.savedCityKey);
       if (city == null || !mounted) return;
       await ref.read(prayerControllerProvider).load(
             location: UserLocation(
               city: city,
-              latitude: preferences.getDouble(_savedLatitudeKey),
-              longitude: preferences.getDouble(_savedLongitudeKey),
+              latitude: preferences
+                  .getDouble(DeviceLocationFlow.savedLatitudeKey),
+              longitude: preferences
+                  .getDouble(DeviceLocationFlow.savedLongitudeKey),
             ),
           );
     } catch (_) {
@@ -132,13 +112,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         config: config,
         onLocationSelected: (location) async {
           final preferences = await SharedPreferences.getInstance();
-          await preferences.setString(_savedCityKey, location.city);
+          await preferences.setString(
+              DeviceLocationFlow.savedCityKey, location.city);
           if (location.latitude != null) {
-            await preferences.setDouble(_savedLatitudeKey, location.latitude!);
+            await preferences.setDouble(
+                DeviceLocationFlow.savedLatitudeKey, location.latitude!);
           }
           if (location.longitude != null) {
             await preferences.setDouble(
-                _savedLongitudeKey, location.longitude!);
+                DeviceLocationFlow.savedLongitudeKey, location.longitude!);
           }
           if (mounted) {
             await ref.read(prayerControllerProvider).load(location: location);
@@ -188,4 +170,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+}
+
+/// HomeScreen ile PrayerTimesScreen'in paylaştığı cihaz konumu akışı:
+/// izin kontrolü, konum okuma, kalıcı depoya kaydetme ve vakit yükleme.
+final class DeviceLocationFlow {
+  DeviceLocationFlow(this._ref);
+
+  final WidgetRef _ref;
+
+  static const savedCityKey = 'saved_city';
+  static const savedLatitudeKey = 'saved_latitude';
+  static const savedLongitudeKey = 'saved_longitude';
+
+  Future<void> loadFromDevice() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      throw StateError('Konum servisi kapalı.');
+    }
+    final manager = _ref.read(permissionManagerProvider);
+    var status = await manager.status(AppPermission.location);
+    if (status == PermissionStatus.denied) {
+      status = await manager.request(AppPermission.location);
+    }
+    if (status == PermissionStatus.permanentlyDenied) {
+      throw const LocationPermissionPermanentlyDeniedException();
+    }
+    if (status != PermissionStatus.granted) {
+      throw StateError('Konum izni verilmedi.');
+    }
+    final position = await Geolocator.getCurrentPosition();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(savedCityKey, 'Mevcut konum');
+    await preferences.setDouble(savedLatitudeKey, position.latitude);
+    await preferences.setDouble(savedLongitudeKey, position.longitude);
+    await _ref.read(prayerControllerProvider).load(
+          location: UserLocation(
+            city: 'Mevcut konum',
+            latitude: position.latitude,
+            longitude: position.longitude,
+          ),
+        );
+  }
+
+  /// Kalıcı olarak reddedilen konum izni için kullanıcıyı sistem
+  /// ayarlarına yönlendiren SnackBar gösterir.
+  void showSettingsPrompt(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          const PermissionRationalePolicy()
+              .permanentlyDeniedMessage(AppPermission.location),
+        ),
+        action: SnackBarAction(
+          label: 'Ayarları Aç',
+          onPressed: openPermissionSettings,
+        ),
+      ),
+    );
+  }
+
+  Future<bool> openPermissionSettings() =>
+      _ref.read(permissionManagerProvider).openSettings();
+}
+
+final class LocationPermissionPermanentlyDeniedException implements Exception {
+  const LocationPermissionPermanentlyDeniedException();
 }

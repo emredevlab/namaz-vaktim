@@ -12,7 +12,8 @@ import '../prayer_times_screen.dart';
 import '../qibla_screen.dart';
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({super.key, required this.config, required this.onLocationSelected});
+  const AppDrawer(
+      {super.key, required this.config, required this.onLocationSelected});
   final AppConfig config;
   final Future<void> Function(UserLocation location) onLocationSelected;
 
@@ -112,6 +113,36 @@ class AppDrawer extends StatelessWidget {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
                 ),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Hakkında'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showAboutDialog(
+                    context: context,
+                    applicationName: config.name,
+                    applicationVersion: '1.1.0',
+                    applicationLegalese: '© 2026 KapadokyaBulut',
+                    applicationIcon: SvgPicture.asset(
+                      config.logoAsset,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.contain,
+                      semanticsLabel: '${config.name} logosu',
+                      placeholderBuilder: (_) => const Icon(
+                        Icons.mosque_outlined,
+                        color: Color(0xFF0D6B5D),
+                        size: 40,
+                      ),
+                    ),
+                    children: const [
+                      Text('Namaz vakitleri, kıble pusulası ve dualar'),
+                      SizedBox(height: 8),
+                      Text('Veriler: api.kapadokyabulut.com.tr'),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ),

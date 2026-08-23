@@ -4,16 +4,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/app_providers.dart';
 import '../../../config/app_config.dart';
 import '../../../shared/formatting.dart';
+import 'home_screen.dart';
 import 'widgets/location_card.dart';
 import 'widgets/prayer_error.dart';
 
-class PrayerTimesScreen extends ConsumerWidget {
+class PrayerTimesScreen extends ConsumerStatefulWidget {
   const PrayerTimesScreen({required this.config, super.key});
 
   final AppConfig config;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrayerTimesScreen> createState() => _PrayerTimesScreenState();
+}
+
+class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
+  bool _loadingLocation = false;
+
+  Future<void> _loadDeviceLocation() async {
+    setState(() => _loadingLocation = true);
+    try {
+      await DeviceLocationFlow(ref).loadFromDevice();
+    } on LocationPermissionPermanentlyDeniedException {
+      if (mounted) DeviceLocationFlow(ref).showSettingsPrompt(context);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingLocation = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = widget.config;
     final state = ref.watch(prayerControllerProvider).state;
     final data = state.data;
     return Scaffold(
@@ -38,8 +64,8 @@ class PrayerTimesScreen extends ConsumerWidget {
             LocationCard(
               config: config,
               data: data,
-              loadingLocation: false,
-              onUseDeviceLocation: () {},
+              loadingLocation: _loadingLocation,
+              onUseDeviceLocation: _loadDeviceLocation,
             ),
             const SizedBox(height: 16),
             if (data?.isFallback ?? false)

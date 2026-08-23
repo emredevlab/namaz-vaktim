@@ -2,20 +2,28 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/app_providers.dart';
+import '../../../core/permission_manager.dart';
 import '../magnetic_declination.dart';
 import '../qibla_calculator.dart';
 
-class QiblaScreen extends StatefulWidget {
-  const QiblaScreen({super.key});
+class QiblaScreen extends ConsumerStatefulWidget {
+  const QiblaScreen({super.key, this.onLocate});
+
+  /// Cihaz konumunu alma akışı; testlerde sahte bir akış enjekte edilebilir.
+  /// Null ise varsayılan izin + GPS akışı çalışır.
+  final Future<void> Function()? onLocate;
 
   @override
-  State<QiblaScreen> createState() => _QiblaScreenState();
+  ConsumerState<QiblaScreen> createState() => _QiblaScreenState();
 }
 
-class _QiblaScreenState extends State<QiblaScreen> {
+class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
   List<double>? _gravity;
@@ -27,6 +35,8 @@ class _QiblaScreenState extends State<QiblaScreen> {
   double? _qiblaTrueBearing;
   double? _declination;
   String _locationName = 'Nevşehir';
+  bool? _hasSavedLocation;
+  bool _locating = false;
 
   static const double _smoothingFactor = 0.1;
 
@@ -34,14 +44,21 @@ class _QiblaScreenState extends State<QiblaScreen> {
   void initState() {
     super.initState();
     _loadLocation();
-    _accelerometerSubscription = accelerometerEventStream().listen((event) {
-      _gravity = _smooth(_gravity, [event.x, event.y, event.z]);
-      _updateHeading();
-    });
-    _magnetometerSubscription = magnetometerEventStream().listen((event) {
-      _magnetic = _smooth(_magnetic, [event.x, event.y, event.z]);
-      _updateHeading();
-    });
+    // Test ortamında platform kanalları yoktur; sensör hataları yutulur.
+    _accelerometerSubscription = accelerometerEventStream().listen(
+      (event) {
+        _gravity = _smooth(_gravity, [event.x, event.y, event.z]);
+        _updateHeading();
+      },
+      onError: (Object _) {},
+    );
+    _magnetometerSubscription = magnetometerEventStream().listen(
+      (event) {
+        _magnetic = _smooth(_magnetic, [event.x, event.y, event.z]);
+        _updateHeading();
+      },
+      onError: (Object _) {},
+    );
   }
 
   List<double> _smooth(List<double>? previous, List<double> sample) {
@@ -90,30 +107,81 @@ class _QiblaScreenState extends State<QiblaScreen> {
     final longitude = preferences.getDouble('saved_longitude');
     final city = preferences.getString('saved_city') ?? 'Nevşehir';
     if (!mounted) return;
-    var bearing = _qiblaBearing;
-    double? declination;
     if (latitude != null && longitude != null) {
-      bearing = qiblaBearing(latitude: latitude, longitude: longitude);
-      try {
-        // Manyetik pusula manyetik kuzeyi gösterir; hedef açıyı sapma
-        // kadar düzelt (doğu pozitif sapma eksi yönde uygulanır).
-        declination = magneticDeclinationDegrees(
-          latitudeDegrees: latitude,
-          longitudeDegrees: longitude,
-          date: DateTime.now(),
-          altitudeKm: 0,
-        );
-      } catch (_) {
-        // Sapma hesaplanamazsa gerçek kuzey kerterizi kullanılır.
-      }
+      _applyLocation(latitude: latitude, longitude: longitude, city: city);
+    } else {
+      setState(() {
+        _hasSavedLocation = false;
+        _locationName = city;
+      });
+    }
+  }
+
+  void _applyLocation({
+    required double latitude,
+    required double longitude,
+    required String city,
+  }) {
+    var bearing = qiblaBearing(latitude: latitude, longitude: longitude);
+    double? declination;
+    try {
+      // Manyetik pusula manyetik kuzeyi gösterir; hedef açıyı sapma
+      // kadar düzelt (doğu pozitif sapma eksi yönde uygulanır).
+      declination = magneticDeclinationDegrees(
+        latitudeDegrees: latitude,
+        longitudeDegrees: longitude,
+        date: DateTime.now(),
+        altitudeKm: 0,
+      );
+    } catch (_) {
+      // Sapma hesaplanamazsa gerçek kuzey kerterizi kullanılır.
     }
     setState(() {
+      _hasSavedLocation = true;
       _locationName = city;
       _qiblaTrueBearing = bearing;
       _declination = declination;
       _qiblaBearing =
           declination == null ? bearing : bearing - declination;
     });
+  }
+
+  Future<void> _acquireDeviceLocation() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final manager = ref.read(permissionManagerProvider);
+      var status = await manager.status(AppPermission.location);
+      if (status == PermissionStatus.denied) {
+        status = await manager.request(AppPermission.location);
+      }
+      if (status != PermissionStatus.granted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Konum izni verilmedi.')),
+        );
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      _applyLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        city: 'Mevcut konum',
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Konum alınamadı.')),
+      );
+    }
+  }
+
+  Future<void> _handleLocatePressed() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    try {
+      await (widget.onLocate ?? _acquireDeviceLocation)();
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   @override
@@ -190,11 +258,50 @@ class _QiblaScreenState extends State<QiblaScreen> {
             ),
           ),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.location_on_outlined),
-              title: const Text('Konum bilgisi'),
-              subtitle: Text(
-                  'Kıble hesabı $_locationName konumuna göre yapılmaktadır.'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Konum bilgisi',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                      'Kıble hesabı $_locationName konumuna göre yapılmaktadır.'),
+                  if (_hasSavedLocation == false) ...[
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed:
+                          _locating ? null : _handleLocatePressed,
+                      icon: _locating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location_outlined),
+                      label: const Text('Konum kullan'),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],
