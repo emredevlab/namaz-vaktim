@@ -104,6 +104,13 @@ void main() {
       isFalse,
     );
 
+    await tester.scrollUntilVisible(
+      find.text('Kaydet'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    await tester.pump();
     await tester.tap(find.text('Kaydet'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -127,6 +134,13 @@ void main() {
 
     await openSettings(tester, store);
 
+    await tester.scrollUntilVisible(
+      find.text('Kaydet'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    await tester.pump();
     await tester.tap(find.text('Kaydet'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

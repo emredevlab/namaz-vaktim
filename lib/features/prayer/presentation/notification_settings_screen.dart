@@ -19,6 +19,8 @@ class _NotificationSettingsScreenState
   late bool _dailyReminder;
   late bool _notifyAtTime;
   late int _minutesBefore;
+  late String _approachSound;
+  late String _entrySound;
 
   @override
   void initState() {
@@ -29,6 +31,8 @@ class _NotificationSettingsScreenState
     _dailyReminder = preferences.dailyReminder;
     _notifyAtTime = preferences.notifyAtTime;
     _minutesBefore = preferences.minutesBefore;
+    _approachSound = preferences.approachSound;
+    _entrySound = preferences.entrySound;
   }
 
   Future<void> _save() async {
@@ -39,6 +43,8 @@ class _NotificationSettingsScreenState
               minutesBefore: _minutesBefore,
               dailyReminder: _dailyReminder,
               notifyAtTime: _notifyAtTime,
+              approachSound: _approachSound,
+              entrySound: _entrySound,
             ),
           );
       if (mounted) Navigator.pop(context);
@@ -123,6 +129,62 @@ class _NotificationSettingsScreenState
                         ? (value) {
                             if (value != null) {
                               setState(() => _minutesBefore = value);
+                            }
+                          }
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildSectionLabel(context, 'Bildirim sesleri'),
+          const SizedBox(height: 10),
+          Card(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _approachSound,
+                    decoration: const InputDecoration(
+                      labelText: 'Vakit yaklaşırken',
+                      helperText: 'Yaklaşım bildiriminde çalınacak ses',
+                    ),
+                    items: NotificationPreferences.approachSoundOptions.entries
+                        .map((entry) => DropdownMenuItem(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ))
+                        .toList(),
+                    onChanged: _enabled
+                        ? (value) {
+                            if (value != null) {
+                              setState(() => _approachSound = value);
+                            }
+                          }
+                        : null,
+                  ),
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _entrySound,
+                    decoration: const InputDecoration(
+                      labelText: 'Vakit girince',
+                      helperText: 'Vaktin kendisinde çalınacak ses (ezan)',
+                    ),
+                    items: NotificationPreferences.entrySoundOptions.entries
+                        .map((entry) => DropdownMenuItem(
+                              value: entry.key,
+                              child: Text(entry.value),
+                            ))
+                        .toList(),
+                    onChanged: _enabled
+                        ? (value) {
+                            if (value != null) {
+                              setState(() => _entrySound = value);
                             }
                           }
                         : null,

@@ -12,22 +12,47 @@ class NotificationPreferences {
       {this.enabled = true,
       this.minutesBefore = 10,
       this.dailyReminder = true,
-      this.notifyAtTime = true});
+      this.notifyAtTime = true,
+      this.approachSound = 'notification_chime',
+      this.entrySound = 'ezan_mekke'});
+
+  /// Yaklaşım bildirimi sesi: res/raw altındaki dosya adı (uzantısız)
+  /// veya 'default' = sistem sesi.
+  static const approachSoundOptions = {
+    'notification_chime': 'Zil sesi',
+    'ezan_mekke': 'Ezan (Mekke)',
+    'default': 'Sistem sesi',
+  };
+
+  /// Vakit girişi bildirimi sesi.
+  static const entrySoundOptions = {
+    'ezan_mekke': 'Ezan (Mekke)',
+    'ezan_medine': 'Ezan (Medine)',
+    'notification_chime': 'Zil sesi',
+    'default': 'Sistem sesi',
+  };
+
   final bool enabled;
   final int minutesBefore;
   final bool dailyReminder;
   final bool notifyAtTime;
+  final String approachSound;
+  final String entrySound;
 
   NotificationPreferences copyWith(
           {bool? enabled,
           int? minutesBefore,
           bool? dailyReminder,
-          bool? notifyAtTime}) =>
+          bool? notifyAtTime,
+          String? approachSound,
+          String? entrySound}) =>
       NotificationPreferences(
         enabled: enabled ?? this.enabled,
         minutesBefore: minutesBefore ?? this.minutesBefore,
         dailyReminder: dailyReminder ?? this.dailyReminder,
         notifyAtTime: notifyAtTime ?? this.notifyAtTime,
+        approachSound: approachSound ?? this.approachSound,
+        entrySound: entrySound ?? this.entrySound,
       );
 }
 
@@ -41,6 +66,8 @@ final class NotificationPreferencesStore {
   static const _minutesBeforeKey = 'notifications.minutes_before';
   static const _dailyReminderKey = 'notifications.daily_reminder';
   static const _notifyAtTimeKey = 'notifications.notify_at_time';
+  static const _approachSoundKey = 'notifications.approach_sound';
+  static const _entrySoundKey = 'notifications.entry_sound';
 
   final SharedPreferences? _preferences;
   final Map<String, Object?>? _memory;
@@ -52,6 +79,9 @@ final class NotificationPreferencesStore {
         minutesBefore: _get(_minutesBeforeKey) as int? ?? 10,
         dailyReminder: _get(_dailyReminderKey) as bool? ?? true,
         notifyAtTime: _get(_notifyAtTimeKey) as bool? ?? true,
+        approachSound:
+            _get(_approachSoundKey) as String? ?? 'notification_chime',
+        entrySound: _get(_entrySoundKey) as String? ?? 'ezan_mekke',
       );
 
   Future<void> write(NotificationPreferences value) async {
@@ -60,11 +90,15 @@ final class NotificationPreferencesStore {
       await preferences.setInt(_minutesBeforeKey, value.minutesBefore);
       await preferences.setBool(_dailyReminderKey, value.dailyReminder);
       await preferences.setBool(_notifyAtTimeKey, value.notifyAtTime);
+      await preferences.setString(_approachSoundKey, value.approachSound);
+      await preferences.setString(_entrySoundKey, value.entrySound);
     } else {
       _memory![_enabledKey] = value.enabled;
       _memory[_minutesBeforeKey] = value.minutesBefore;
       _memory[_dailyReminderKey] = value.dailyReminder;
       _memory[_notifyAtTimeKey] = value.notifyAtTime;
+      _memory[_approachSoundKey] = value.approachSound;
+      _memory[_entrySoundKey] = value.entrySound;
     }
   }
 }
@@ -87,7 +121,8 @@ abstract interface class LocalNotificationScheduler {
       {required int id,
       required String title,
       required String body,
-      required DateTime time});
+      required DateTime time,
+      String? sound});
 
   /// [anchor] zamanının saat/dakika bileşeniyle her gün tekrarlanan bildirim.
   Future<void> scheduleDailyReminder({
@@ -158,6 +193,7 @@ final class PrayerNotificationPlanner {
         title: request.title,
         body: 'Namaz vaktiniz yaklaşıyor.',
         time: scheduledTime,
+        sound: preferences.approachSound,
       );
       if (preferences.notifyAtTime) {
         await scheduler.schedulePrayer(
@@ -165,6 +201,7 @@ final class PrayerNotificationPlanner {
           title: request.title,
           body: '${request.title} vakti girdi.',
           time: request.prayerTime,
+          sound: preferences.entrySound,
         );
       }
     }
@@ -202,16 +239,25 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   static const String _channelName = 'Namaz vakitleri';
   static const String _channelDescription = 'Namaz vakti hatırlatmaları';
 
-  NotificationDetails get _notificationDetails => const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      );
+  /// Ses başına ayrı Android kanalı gerekir: kanal ses ayarı ilk
+  /// yaratıldığında sabitlenir. Ses değişince yeni kanal id'si kullanılır.
+  NotificationDetails _notificationDetails(String? sound) {
+    final channelKey = sound == null || sound == 'default'
+        ? 'default'
+        : sound.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    final androidDetails = AndroidNotificationDetails(
+      '$_channelId$channelKey',
+      _channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      sound: sound == null || sound == 'default'
+          ? null
+          : RawResourceAndroidNotificationSound(sound),
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+    );
+    return NotificationDetails(android: androidDetails, iOS: const DarwinNotificationDetails());
+  }
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
@@ -260,6 +306,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required String title,
     required String body,
     required DateTime time,
+    String? sound,
   }) async {
     await _ensureInitialized();
     if (!time.isAfter(DateTime.now())) return;
@@ -271,6 +318,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         time: time,
         payload: 'route:/prayer-times',
         daily: false,
+        sound: sound,
       );
       _lastError = null;
     } catch (error) {
@@ -327,7 +375,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         998,
         'Test bildirimi (anında)',
         'Gösterim katmanı çalışıyor. Namaz vakitleri de böyle görünecek.',
-        _notificationDetails,
+        _notificationDetails(null),
         payload: 'route:/prayer-times',
       );
       _lastError = null;
@@ -388,7 +436,25 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required DateTime time,
     required String payload,
     required bool daily,
+    String? sound,
   }) async {
+    // Ses bazlı kanal, planlamadan ÖNCE var olmalı (plugin otomatik
+    // yaratmaz); ses değişince kanal id'si değişir ve Android yeni sesi
+    // uygular.
+    final details = _notificationDetails(sound);
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final androidDetails = details.android;
+    if (android != null && androidDetails != null) {
+      await android.createNotificationChannel(AndroidNotificationChannel(
+        androidDetails.channelId,
+        androidDetails.channelName,
+        description: androidDetails.channelDescription,
+        importance: androidDetails.importance,
+        sound: androidDetails.sound,
+        audioAttributesUsage: androidDetails.audioAttributesUsage,
+      ));
+    }
     try {
       await _scheduleWithMode(
         id: id,
@@ -397,6 +463,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         time: time,
         payload: payload,
         daily: daily,
+        details: details,
         mode: AndroidScheduleMode.exactAllowWhileIdle,
       );
       return;
@@ -412,6 +479,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       time: time,
       payload: payload,
       daily: daily,
+      details: details,
       mode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
@@ -423,6 +491,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required DateTime time,
     required String payload,
     required bool daily,
+    required NotificationDetails details,
     required AndroidScheduleMode mode,
   }) =>
       _plugin.zonedSchedule(
@@ -430,7 +499,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         title,
         body,
         tz.TZDateTime.from(time, tz.local),
-        _notificationDetails,
+        details,
         payload: payload,
         androidScheduleMode: mode,
         uiLocalNotificationDateInterpretation:
@@ -453,7 +522,8 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
       {required int id,
       required String title,
       required String body,
-      required DateTime time}) async {}
+      required DateTime time,
+      String? sound}) async {}
   @override
   Future<void> scheduleDailyReminder({
     required int id,

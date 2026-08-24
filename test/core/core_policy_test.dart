@@ -7,6 +7,7 @@ import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
 final class _RecordingScheduler implements LocalNotificationScheduler {
   bool cancelled = false;
   final times = <DateTime>[];
+  final sounds = <String?>[];
   final requests = <({int id, String title, String body, DateTime time})>[];
   final dailyAnchors = <DateTime>[];
 
@@ -19,8 +20,10 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
     required String title,
     required String body,
     required DateTime time,
+    String? sound,
   }) async {
     times.add(time);
+    sounds.add(sound);
     requests.add((id: id, title: title, body: body, time: time));
   }
 
