@@ -61,7 +61,12 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
         onRefresh: () => ref.read(prayerControllerProvider).load(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.of(context).padding.bottom + 24,
+          ),
           children: [
             _buildHeroHeader(data),
             if (data?.isFallback ?? false) ...[

@@ -121,13 +121,14 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
     }
     if (times.isEmpty) throw const FormatException('empty times');
     final aladhanDate = dataRoot['date'];
+    final hijri = _parseHijri(aladhanDate is Map ? aladhanDate['hijri'] : null);
     return DailyPrayerTimes(
       date: date,
       location: location,
       times: times,
-      hijriDate: _parseHijri(
-        aladhanDate is Map ? aladhanDate['hijri'] : null,
-      ),
+      hijriDate: hijri?.formatted,
+      hijriDay: hijri?.day ?? 0,
+      hijriMonth: hijri?.month ?? 0,
     );
   }
 
@@ -153,7 +154,7 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
     'Zilhicce',
   ];
 
-  String? _parseHijri(Object? hijri) {
+  HijriDateInfo? _parseHijri(Object? hijri) {
     if (hijri is! Map) return null;
     final day = int.tryParse('${hijri['day']}');
     final month = hijri['month'];
@@ -166,7 +167,12 @@ final class ApiPrayerTimesRepository implements PrayerTimesRepository {
         monthNumber > 12) {
       return null;
     }
-    return '$day ${_hijriMonths[monthNumber - 1]} $year';
+    return HijriDateInfo(
+      day: day,
+      month: monthNumber,
+      year: year,
+      formatted: '$day ${_hijriMonths[monthNumber - 1]} $year',
+    );
   }
 
   String _aladhanKey(PrayerType type) => switch (type) {

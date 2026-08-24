@@ -13,6 +13,8 @@ class DailyPrayerTimes {
     required this.times,
     this.isFallback = false,
     this.hijriDate,
+    this.hijriDay = 0,
+    this.hijriMonth = 0,
   });
   final DateTime date;
   final UserLocation location;
@@ -22,6 +24,10 @@ class DailyPrayerTimes {
   /// Hicri tarih ('1 Rebiülevvel 1448'); yalnızca Aladhan şemasında dolur.
   final String? hijriDate;
 
+  /// Hicri gün/ay numaraları; dini gün eşleştirmesi için (yoksa 0).
+  final int hijriDay;
+  final int hijriMonth;
+
   PrayerTime? get next {
     final now = DateTime.now();
     for (final time in times) {
@@ -29,6 +35,20 @@ class DailyPrayerTimes {
     }
     return null;
   }
+}
+
+/// Hicri tarih bilgisi: ayrı gün/ay alanları dini gün eşleştirmesi içindir.
+class HijriDateInfo {
+  const HijriDateInfo({
+    required this.day,
+    required this.month,
+    required this.year,
+    required this.formatted,
+  });
+  final int day;
+  final int month;
+  final int year;
+  final String formatted;
 }
 
 class UserLocation {

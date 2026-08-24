@@ -8,7 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/app_providers.dart';
 import '../../../config/app_config.dart';
 import '../../../core/permission_manager.dart';
+import '../../../shared/design/app_theme.dart';
 import '../prayer_models.dart';
+import '../religious_days.dart';
 import 'notification_settings_screen.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/location_card.dart';
@@ -187,6 +189,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             loadingLocation: _loadingLocation,
             onUseDeviceLocation: _loadDeviceLocation,
           ),
+          if (prayerState.data != null) ...[
+            const SizedBox(height: 12),
+            SpecialDayBanner(
+              content: specialContentFor(
+                hijriMonth: prayerState.data!.hijriMonth,
+                hijriDay: prayerState.data!.hijriDay,
+                gregorianDate: DateTime.now(),
+              ),
+            ),
+          ],
           if (_bannerAd != null && _bannerReady) ...[
             const SizedBox(height: 12),
             SizedBox(height: 50, child: AdWidget(ad: _bannerAd!)),
@@ -317,4 +329,142 @@ final class DeviceLocationFlow {
 
 final class LocationPermissionPermanentlyDeniedException implements Exception {
   const LocationPermissionPermanentlyDeniedException();
+}
+
+/// Dini gün / Cuma banner'ı: altın gradient kart, dokununca tam dua açılır.
+class SpecialDayBanner extends StatelessWidget {
+  const SpecialDayBanner({super.key, required this.content});
+
+  final SpecialDayContent? content;
+
+  void _showDuaSheet(BuildContext context) {
+    final special = content!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = isDark ? AppTheme.cream : AppTheme.primaryDeep;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor:
+          isDark ? AppTheme.darkCard : Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(specialDayIcon(special), color: AppTheme.gold, size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    special.title,
+                    style: TextStyle(
+                      color: onSurface,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              special.message,
+              style: TextStyle(
+                  color: onSurface.withValues(alpha: .85), fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: (isDark ? AppTheme.gold : AppTheme.primary)
+                    .withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.gold.withValues(alpha: .4),
+                ),
+              ),
+              child: Text(
+                special.dua,
+                style: TextStyle(
+                  color: isDark ? AppTheme.goldSoft : AppTheme.primary,
+                  fontSize: 14.5,
+                  height: 1.7,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text('Âmin'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final special = content;
+    if (special == null) return const SizedBox.shrink();
+    return GestureDetector(
+      onTap: () => _showDuaSheet(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: AppTheme.goldGradient,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.gold.withValues(alpha: .3),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(specialDayIcon(special),
+                color: AppTheme.primaryDeep, size: 26),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    special.title,
+                    style: const TextStyle(
+                      color: AppTheme.primaryDeep,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    special.message,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppTheme.primaryDeep.withValues(alpha: .8),
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppTheme.primaryDeep),
+          ],
+        ),
+      ),
+    );
+  }
 }

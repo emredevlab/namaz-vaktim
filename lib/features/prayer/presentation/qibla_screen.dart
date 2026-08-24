@@ -233,7 +233,12 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Kıble')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          MediaQuery.of(context).padding.bottom + 24,
+        ),
         children: [
           _buildDialCard(theme, heading, aligned),
           const SizedBox(height: 16),

@@ -57,7 +57,12 @@ class _NotificationSettingsScreenState
     return Scaffold(
       appBar: AppBar(title: const Text('Bildirim ayarları')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          MediaQuery.of(context).padding.bottom + 24,
+        ),
         children: [
           _buildSectionLabel(context, 'Bildirimler'),
           const SizedBox(height: 10),

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -351,6 +352,39 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required DateTime time,
     required String payload,
     required bool daily,
+  }) async {
+    try {
+      await _scheduleWithMode(
+        id: id,
+        title: title,
+        body: body,
+        time: time,
+        payload: payload,
+        daily: daily,
+        mode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } on PlatformException {
+      _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
+      await _scheduleWithMode(
+        id: id,
+        title: title,
+        body: body,
+        time: time,
+        payload: payload,
+        daily: daily,
+        mode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+  }
+
+  Future<void> _scheduleWithMode({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime time,
+    required String payload,
+    required bool daily,
+    required AndroidScheduleMode mode,
   }) =>
       _plugin.zonedSchedule(
         id,
@@ -359,7 +393,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         tz.TZDateTime.from(time, tz.local),
         _notificationDetails,
         payload: payload,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: mode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents:

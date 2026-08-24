@@ -6,7 +6,12 @@ import '../../../shared/design/app_theme.dart';
 class DuasScreen extends StatefulWidget {
   const DuasScreen({super.key});
 
-  static const _categories = <String>['Namaz', 'Günlük Hayat', 'Korunma'];
+  static const _categories = <String>[
+    'Namaz',
+    'Günlük Hayat',
+    'Korunma',
+    'Dini Günler',
+  ];
 
   static const _duas = <({String title, String arabic, String meaning, String category})>[
     // --- NAMAZ ---
@@ -236,6 +241,67 @@ class DuasScreen extends StatefulWidget {
       meaning: 'Yarattığı şeylerin şerrinden, Allah’ın eksiksiz sözlerine sığınırım.',
       category: 'Korunma',
     ),
+    // --- DİNİ GÜNLER ---
+    (
+      title: 'Mevlid Kandili Duası',
+      arabic:
+          'Yâ Rabbî! Sevgili Peygamberine ümmet olma şerefine erdirdiğin için sana hamd olsun. Onun şefaatine nail eyle ve güzel ahlâkıyla ahlâklanmayı bizlere nasîp et. Âmîn.',
+      meaning:
+          'Mevlid Kandili’nde Peygamber Efendimize salât ü selâm getirilmesi, Kur’ân okunması ve dua edilmesi müstehaptır.',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Cuma Günü Duası',
+      arabic: 'Allâhümme salli alâ Muhammedin ve alâ âli Muhammed.',
+      meaning:
+          'Cuma günü Kehf Suresi okumak, bol salavat getirmek ve dua etmek müstehaptır. Cuma saatinde kabul edilmiş bir an vardır.',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Kadir Gecesi Duası',
+      arabic:
+          'Allâhümme inneke afüvvün kerîmün tühibbü’l-afve fa’fu annî.',
+      meaning:
+          'Allah’ım! Sen affedicisin, affı seversin; beni de affet. (Kadir Gecesi’nde Peygamberimizin okuttuğu dua.)',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Arefe Duası',
+      arabic:
+          'Lâ ilâhe illallâhü vahdehû lâ şerîke leh. Lehü’l-mülkü ve lehü’l-hamdü ve hüve alâ külli şey’in kadîr.',
+      meaning: 'Arefe gününde bu kelime-i tevhidi bolca zikretmek faziletlidir.',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Aşure Günü Duası',
+      arabic: 'Hasbünallâhü ve ni’mel-vekîl. Elhamdü lillâhi alâ külli hâlin.',
+      meaning:
+          'Aşure Günü’nde zikir, sadaka ve akraba ziyareti tavsiye edilir.',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Berat Kandili Duası',
+      arabic:
+          'Elhamdü lillâhi Rabbi’l-âlemîn. Allâhümme inneke afüvvün kerîmün tühibbü’l-afve fa’fu annî.',
+      meaning:
+          'Berat Kandili’nde af dilemek ve Kur’ân tilâveti etmek müstehaptır.',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Miraç Kandili Duası',
+      arabic:
+          'Sübhânallâhi ve’l-hamdü lillâhi ve lâ ilâhe illallâhü vallâhü ekber.',
+      meaning:
+          'Miraç Kandili’nde namaz kılmak, zikretmek, tövbe ve istiğfar etmek müstehaptır.',
+      category: 'Dini Günler',
+    ),
+    (
+      title: 'Hicri Yıl Başı Duası',
+      arabic:
+          'Yâ Rabbî! Bu hicrî yılı imânımızı tazelememize ve sâlih amellere vesîle eyle. Âmîn.',
+      meaning: 'Hicri yılın ilk günü dua etmek, hayra başlamanın işaretidir.',
+      category: 'Dini Günler',
+    ),
   ];
 
   @override
@@ -256,7 +322,12 @@ class _DuasScreenState extends State<DuasScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Dualar')),
         body: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: EdgeInsets.fromLTRB(
+      16,
+      12,
+      16,
+      MediaQuery.of(context).padding.bottom + 24,
+    ),
           itemCount: _filteredDuas.length + 2,
           itemBuilder: (context, index) {
             if (index == 0) return const _DuasHeaderCard();
