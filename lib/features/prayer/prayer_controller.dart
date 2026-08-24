@@ -27,6 +27,10 @@ final class PrayerController extends ChangeNotifier {
       _onPreferencesChanged;
   Timer? _refreshTimer;
   bool _requestInFlight = false;
+
+  /// Planlanmış yarın bildirimlerinin istekleri; synchronize() cancelAll
+  /// yaptığından her senkrona bugünle birlikte dahil edilmek zorundalar.
+  List<PrayerNotificationRequest>? _cachedTomorrowRequests;
   UserLocation _lastLocation = const UserLocation(
     city: 'Nevşehir',
     latitude: 38.6244,
@@ -45,18 +49,39 @@ final class PrayerController extends ChangeNotifier {
     await _onPreferencesChanged?.call(preferences);
     final data = _state.data;
     if (data == null) return;
-    await _notificationPlanner.synchronize(
+    await _synchronizeNotifications(_notificationRequestsFor(data));
+    notifyListeners();
+  }
+
+  List<PrayerNotificationRequest> _notificationRequestsFor(
+    DailyPrayerTimes data, {
+    int idOffset = 0,
+  }) =>
       [
         for (final prayerTime in data.times)
           PrayerNotificationRequest(
-            id: prayerTime.type.index,
+            id: prayerTime.type.index + idOffset,
             title: prayerTypeLabel(prayerTime.type),
             prayerTime: prayerTime.dateTime,
           ),
-      ],
-      preferences,
-    );
-    notifyListeners();
+      ];
+
+  /// Bugün + (varsa) yarının isteklerini birleştirip planlar.
+  /// synchronize() cancelAll ile başladığından yarının istekleri her
+  /// seferinde birlikte yeniden planlanmalı, aksi halde silinirler.
+  Future<void> _synchronizeNotifications(
+      List<PrayerNotificationRequest> todayRequests) async {
+    try {
+      await _notificationPlanner.synchronize(
+        [
+          ...todayRequests,
+          if (_cachedTomorrowRequests != null) ..._cachedTomorrowRequests!,
+        ],
+        _notificationPreferences,
+      );
+    } catch (_) {
+      // Bildirim kurulumu başarısız olsa da namaz vakitleri gösterilmelidir.
+    }
   }
 
   /// [location] verilmezse en son kullanılan konum yeniden kullanılır;
@@ -73,30 +98,28 @@ final class PrayerController extends ChangeNotifier {
     notifyListeners();
     try {
       final data = await _repository.getDaily(effectiveLocation, DateTime.now());
-      _state = PrayerHomeState(data: data);
-      try {
-        await _notificationPlanner.synchronize(
-          [
-            for (final prayerTime in data.times)
-              PrayerNotificationRequest(
-                id: prayerTime.type.index,
-                title: prayerTypeLabel(prayerTime.type),
-                prayerTime: prayerTime.dateTime,
-              ),
-          ],
-          _notificationPreferences,
-        );
-      } catch (_) {
-        // Bildirim kurulumu başarısız olsa da namaz vakitleri gösterilmelidir.
-      }
+      // copyWith kullanılır: fresh constructor tomorrow'ı sıfırlayıp
+      // UI'da yarın bölümünün titremesine yol açıyordu.
+      _state = _state.copyWith(data: data, isLoading: false);
+      await _synchronizeNotifications(_notificationRequestsFor(data));
       try {
         // Önce bugün yüklensin; yarın gecikse/başarısız olsa bile bugünün
         // verisi etkilenmez.
+        final previousTomorrowDate = _state.tomorrow?.date;
         final tomorrowData = await _repository.getDaily(
           effectiveLocation,
           DateTime.now().add(const Duration(days: 1)),
         );
         _state = _state.copyWith(tomorrow: tomorrowData);
+        // Yarının bildirimleri de planlanır: kullanıcı uygulamayı yarın
+        // hiç açmasa bile vakit bildirimleri vaktinde gelir. Id çakışmasını
+        // önlemek için yarın +200 ofsetiyle planlanır. Gün değişmedikçe
+        // yeniden planlanmaz; cache sayesinde her senkrona zaten dahiller.
+        if (previousTomorrowDate != tomorrowData.date) {
+          _cachedTomorrowRequests =
+              _notificationRequestsFor(tomorrowData, idOffset: 200);
+          await _synchronizeNotifications(_notificationRequestsFor(data));
+        }
       } catch (_) {
         // Yarının vakitleri alınamazsa sessizce geç; tomorrow null kalır.
       }

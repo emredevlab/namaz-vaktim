@@ -4,6 +4,38 @@ import 'package:namaz_vaktim/features/prayer/prayer_controller.dart';
 import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
 import 'package:namaz_vaktim/features/prayer/prayer_repository.dart';
 
+final class _RecordingScheduler implements LocalNotificationScheduler {
+  final entries = <({int id, String title, String body, DateTime time})>[];
+  final dailyAnchors = <DateTime>[];
+  int cancelCount = 0;
+
+  Iterable<int> get ids => entries.map((entry) => entry.id);
+
+  @override
+  Future<void> cancelAll() async => cancelCount++;
+
+  @override
+  Future<void> schedulePrayer({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime time,
+  }) async =>
+      entries.add((id: id, title: title, body: body, time: time));
+
+  @override
+  Future<void> scheduleDailyReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime anchor,
+  }) async =>
+      dailyAnchors.add(anchor);
+
+  @override
+  Future<String?> initialPayload() async => null;
+}
+
 final class _StubRepository implements PrayerTimesRepository {
   _StubRepository(this._responses);
 
@@ -279,5 +311,72 @@ void main() {
         .firstWhere((time) => time.type == PrayerType.imsak);
     expect(imsakAfter?.dateTime.minute, 45,
         reason: 'Sessiz yenileme yarının vakitlerini de güncellemeli.');
+  });
+
+  test('tomorrow notifications are scheduled with +200 offset', () async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final ankara = const UserLocation(city: 'Ankara');
+    final repository = _StubRepository([]);
+    repository.addResponseForDate(today, _timesOn(today, ankara));
+    repository.addResponseForDate(tomorrow, _timesOn(tomorrow, ankara));
+    final scheduler = _RecordingScheduler();
+    final controller = PrayerController(
+      repository: repository,
+      notificationScheduler: scheduler,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.load(location: ankara);
+
+    final tomorrowApproach = scheduler.ids.where((id) => id >= 200 && id < 210);
+    final tomorrowOnTime = scheduler.ids.where((id) => id >= 250 && id < 260);
+    expect(tomorrowApproach, hasLength(6),
+        reason: 'Yarının 6 vakidi için yaklaşım bildirimi planlanmalı.');
+    expect(tomorrowOnTime, hasLength(6),
+        reason: 'notifyAtTime varsayılan açık: yarının 6 vakdinde giriş bildirimi.');
+    expect(scheduler.ids, containsAll([0, 5, 50, 55]),
+        reason: 'Bugünün bildirimleri de planlanmalı.');
+    // İlk yüklemede senkron iki kez çalışır (bugün; bugün+yarın) ve günlük
+    // hatırlatma iki kez planlanır — cihazda aynı id olduğu için zararsızdır.
+    expect(scheduler.dailyAnchors, isNotEmpty);
+    expect(scheduler.dailyAnchors.toSet().length, 1,
+        reason: 'Günlük hatırlatma aynı imsak saatine bağlanmalı.');
+  });
+
+  test('silent refresh keeps tomorrow notifications scheduled', () async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final ankara = const UserLocation(city: 'Ankara');
+    final repository = _StubRepository([]);
+    repository.addResponseForDate(today, _timesOn(today, ankara));
+    repository.addResponseForDate(tomorrow, _timesOn(tomorrow, ankara));
+    final scheduler = _RecordingScheduler();
+    final controller = PrayerController(
+      repository: repository,
+      notificationScheduler: scheduler,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.load(location: ankara);
+    final tomorrowCountAfterFirstLoad =
+        scheduler.ids.where((id) => id >= 200).length;
+    expect(tomorrowCountAfterFirstLoad, 12);
+
+    // Aynı gün içinde sessiz yenileme: cancelAll yarının bildirimlerini
+    // silse de cache'ten birlikte yeniden planlanmalılar.
+    final entriesBeforeRefresh = scheduler.entries.length;
+    await controller.load();
+
+    final tomorrowScheduledDuringRefresh = scheduler.entries
+        .skip(entriesBeforeRefresh)
+        .where((entry) => entry.id >= 200)
+        .length;
+    expect(tomorrowScheduledDuringRefresh, 12,
+        reason:
+            'Sessiz yenileme yarının bildirimlerini silmemeli (cancelAll + '
+            'birleşik yeniden planlama — son turda 12 yeniden planlanmalı).');
   });
 }
