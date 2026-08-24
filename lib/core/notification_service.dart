@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -363,18 +362,21 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         daily: daily,
         mode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-    } on PlatformException {
-      _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
-      await _scheduleWithMode(
-        id: id,
-        title: title,
-        body: body,
-        time: time,
-        payload: payload,
-        daily: daily,
-        mode: AndroidScheduleMode.inexactAllowWhileIdle,
-      );
+      return;
+    } catch (_) {
+      // Exact alarm izni/uygulanabilirliği yoksa inexact ile devam —
+      // gecikmeli de olsa bildirim gelmesi sessiz kalmaktan iyidir.
     }
+    _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
+    await _scheduleWithMode(
+      id: id,
+      title: title,
+      body: body,
+      time: time,
+      payload: payload,
+      daily: daily,
+      mode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
   }
 
   Future<void> _scheduleWithMode({
