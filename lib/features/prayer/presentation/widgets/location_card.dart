@@ -123,7 +123,7 @@ class _LocationCardState extends State<LocationCard> {
                 ),
               ),
               Text(
-                formatPrayerDate(DateTime.now()),
+                _dateLine(data),
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: .75),
                   fontSize: 12.5,
@@ -152,6 +152,14 @@ class _LocationCardState extends State<LocationCard> {
         ),
       ],
     );
+  }
+
+  /// '24 Ağustos 2026' ya da Hicri mevcutsa
+  /// '24 Ağustos 2026 • 1 Rebiülevvel 1448'.
+  String _dateLine(DailyPrayerTimes? data) {
+    final gregorian = formatPrayerDate(DateTime.now());
+    final hijri = data?.hijriDate;
+    return hijri == null ? gregorian : '$gregorian • $hijri';
   }
 
   Widget _buildNextPrayer(BuildContext context, DailyPrayerTimes data, PrayerTime next) {

@@ -27,7 +27,11 @@ final class PrayerController extends ChangeNotifier {
       _onPreferencesChanged;
   Timer? _refreshTimer;
   bool _requestInFlight = false;
-  UserLocation _lastLocation = const UserLocation(city: 'Nevşehir');
+  UserLocation _lastLocation = const UserLocation(
+    city: 'Nevşehir',
+    latitude: 38.6244,
+    longitude: 34.7239,
+  );
   PrayerHomeState _state = const PrayerHomeState(isLoading: true);
 
   PrayerHomeState get state => _state;

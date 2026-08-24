@@ -6,7 +6,7 @@
     "logoAsset": "assets/config/namaz_vaktim_logo.svg"
   },
   "endpoints": {
-    "api": "https://api.kapadokyabulut.com.tr",
+    "api": "https://api.aladhan.com",
     "web": "https://kapadokyabulut.com.tr"
   },
   "ads": {

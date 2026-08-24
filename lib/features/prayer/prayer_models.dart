@@ -12,11 +12,15 @@ class DailyPrayerTimes {
     required this.location,
     required this.times,
     this.isFallback = false,
+    this.hijriDate,
   });
   final DateTime date;
   final UserLocation location;
   final List<PrayerTime> times;
   final bool isFallback;
+
+  /// Hicri tarih ('1 Rebiülevvel 1448'); yalnızca Aladhan şemasında dolur.
+  final String? hijriDate;
 
   PrayerTime? get next {
     final now = DateTime.now();

@@ -1,0 +1,87 @@
+# ============================================================================
+# api.kapadokyabulut.com.tr - nginx vhost ornegi
+#
+# Bu dosya BARE nginx kurulumlari icindir (Plesk/cPanel kullaniyorsaniz bu
+# dosyayi elle uygulamayin; panelin subdomain + PHP arayuzunu kullanin,
+# bkz. DEPLOY.md).
+#
+# Kurulum:
+#   1) cp nginx.conf.example /etc/nginx/sites-available/api.kapadokyabulut.com.tr
+#   2) ln -s /etc/nginx/sites-available/api.kapadokyabulut.com.tr \
+#            /etc/nginx/sites-enabled/
+#   3) certbot --nginx -d api.kapadokyabulut.com.tr   (TLS bolumunu otomatik doldurur)
+#   4) nginx -t && systemctl reload nginx
+# ============================================================================
+
+# --- HTTP -> HTTPS yonlendirme -----------------------------------------------
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.kapadokyabulut.com.tr;
+
+    # ACME (Let's Encrypt) http-01 dogrulamasi icin serbest birakilir
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- HTTPS -------------------------------------------------------------------
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.kapadokyabulut.com.tr;
+
+    # NOT: once "certbot --nginx -d api.kapadokyabulut.com.tr" calistirin;
+    # certbot bu iki satiri otomatik doldurur/yeniler.
+    ssl_certificate     /etc/letsencrypt/live/api.kapadokyabulut.com.tr/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.kapadokyabulut.com.tr/privkey.pem;
+
+    # Sadece api.php sunuldugu icin genis TLS politikasi yeterli:
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL_api:10m;
+
+    root /var/www/vhosts/api.kapadokyabulut.com.tr/httpdocs;
+    index api.php index.html;
+
+    access_log /var/log/nginx/api.kapadokyabulut.com.tr.access.log;
+    error_log  /var/log/nginx/api.kapadokyabulut.com.tr.error.log warn;
+
+    # --- gzip: JSON yanitlar icin --------------------------------------------
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_proxied any;
+    gzip_types application/json text/plain text/css application/javascript;
+
+    # --- Tum istekler api.php'ye ----------------------------------------------
+    location / {
+        try_files $uri $uri/ /api.php?$query_string;
+    }
+
+    # Statik dosya yok denecek kadar az; yine de guvenlik:
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+
+    # --- PHP-FPM ---------------------------------------------------------------
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+
+        # Sistemdeki PHP-FPM surumune gore duzeltin:
+        #   Debian/Ubuntu: unix:/run/php/php8.2-fpm.sock
+        #   Plesk:         unix:///var/run/php-fpm/php-fpm.sock (panelden otomatik)
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+
+        fastcgi_read_timeout 15s;
+
+        # 1 saat tarayici/CDN onbellegi (api.php de ayni header'i gonderir;
+        # add_header inheritance kurali geregi burada tekrarlamak gerekirse:)
+        # add_header Cache-Control "public, max-age=3600" always;
+    }
+
+    # Upstream (api.aladhan.com) cikis baglantisi icin ek islem gerekmez.
+}
