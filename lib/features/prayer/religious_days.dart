@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 /// Hicri dini günler verisi ve eşleştirme motoru.
@@ -10,6 +13,7 @@ final class ReligiousDayInfo {
     required this.message,
     required this.dua,
     this.daySpan = 1,
+    this.isNightObserved = false,
   });
 
   final int month;
@@ -20,6 +24,10 @@ final class ReligiousDayInfo {
 
   /// Bayramlar birden fazla gün sürer; [daySpan] ile kapsanır.
   final int daySpan;
+
+  /// Kandil geceleri gün batımıyla başlar, sabah namazıyla biter:
+  /// banner'ı gündüz göstermemek için işaretlenir.
+  final bool isNightObserved;
 }
 
 const List<ReligiousDayInfo> kReligiousDays = [
@@ -44,7 +52,7 @@ const List<ReligiousDayInfo> kReligiousDays = [
   ReligiousDayInfo(
     month: 3,
     day: 12,
-    daySpan: 1,
+    isNightObserved: true,
     title: 'Mevlid Kandili',
     message:
         'Sevgili Peygamberimizin (s.a.v.) dünyaya teşrif ettiği mübarek gece. Salavat-ı şerife getirin, Kur\'an okuyun.',
@@ -54,7 +62,7 @@ const List<ReligiousDayInfo> kReligiousDays = [
   ReligiousDayInfo(
     month: 7,
     day: 27,
-    daySpan: 1,
+    isNightObserved: true,
     title: 'Miraç Kandili',
     message:
         'Miraç Kandili\'nde namaz kılıp zikretmek, tövbe ve istiğfar etmek müstehaptır.',
@@ -64,7 +72,7 @@ const List<ReligiousDayInfo> kReligiousDays = [
   ReligiousDayInfo(
     month: 8,
     day: 15,
-    daySpan: 1,
+    isNightObserved: true,
     title: 'Berat Kandili',
     message: 'Berat Kandili\'nde af dilemek ve Kur\'an tilaveti etmek müstehaptır.',
     dua:
@@ -73,7 +81,7 @@ const List<ReligiousDayInfo> kReligiousDays = [
   ReligiousDayInfo(
     month: 9,
     day: 27,
-    daySpan: 1,
+    isNightObserved: true,
     title: 'Kadir Gecesi',
     message:
         'Bin aydan hayırlı olan bu gecede Peygamberimizin okuttuğu dua şudur:',
@@ -147,13 +155,22 @@ final class SpecialDayContent {
 
 /// Hicri tarih + miladi günden bugünün özel içeriğini döndürür.
 /// Sıra: dini gün -> arifesi (yarın dini gün) -> Cuma. Hiçbiri değilse null.
+///
+/// [fajrTime]: bugünün imsak vakti. Kandil geceleri sabah namazıyla
+/// bittiğinden, gündüz geldiyse kandil banner'ı gösterilmez.
 SpecialDayContent? specialContentFor({
   required int hijriMonth,
   required int hijriDay,
   required DateTime gregorianDate,
+  DateTime? fajrTime,
 }) {
   final special = matchSpecialDay(hijriMonth, hijriDay);
   if (special != null) {
+    if (special.isNightObserved &&
+        fajrTime != null &&
+        gregorianDate.isAfter(fajrTime)) {
+      return null; // Kandil gecesi sabah namazıyla sona erdi.
+    }
     return SpecialDayContent(
       title: special.title,
       message: special.message,
@@ -190,3 +207,95 @@ SpecialDayContent? specialContentFor({
 /// Banner ikonu: dini günler cami, cuma güneş.
 IconData specialDayIcon(SpecialDayContent content) =>
     content.isFriday ? Icons.wb_sunny_outlined : Icons.mosque_outlined;
+
+/// Dini takvim: gelecekteki dini günlerin Miladi tarihleri Aladhan
+/// hToG servisiyle hesaplanır — her yıl otomatik güncel, manuel
+/// bakım gerektirmez.
+final class UpcomingReligiousDay {
+  const UpcomingReligiousDay({
+    required this.info,
+    required this.gregorianDate,
+    required this.hijriYear,
+  });
+
+  final ReligiousDayInfo info;
+  final DateTime gregorianDate;
+  final int hijriYear;
+
+  String get hijriLabel =>
+      '${info.day} ${info.title} $hijriYear';
+}
+
+typedef HijriDateFetcher = Future<DateTime> Function(
+    int hijriYear, int hijriMonth, int hijriDay);
+
+/// Aladhan hToG servisiyle Hicri tarihi Miladi'ye çevirir.
+Future<DateTime> fetchGregorianFromAladhan(
+    int hijriYear, int hijriMonth, int hijriDay) async {
+  final dateParam =
+      '${hijriDay.toString().padLeft(2, '0')}-${hijriMonth.toString().padLeft(2, '0')}-${hijriYear.toString().padLeft(4, '0')}';
+  final client = HttpClient();
+  try {
+    final request = await client
+        .getUrl(Uri.parse('https://api.aladhan.com/v1/hToG?date=$dateParam'))
+      ..headers.set(HttpHeaders.acceptHeader, 'application/json');
+    final response = await request.close();
+    if (response.statusCode != 200) {
+      throw StateError('Aladhan hToG HTTP ${response.statusCode}');
+    }
+    final body = await response.transform(utf8.decoder).join();
+    final decoded = jsonDecode(body) as Map<String, dynamic>;
+    final gregorian = decoded['data']?['gregorian']?['date'];
+    if (gregorian is! String) {
+      throw StateError('Aladhan hToG yanıtı beklenmedik biçimde.');
+    }
+    final parts = gregorian.split('-');
+    if (parts.length != 3) {
+      throw StateError('Aladhan hToG tarih biçimi geçersiz: $gregorian');
+    }
+    return DateTime(
+      int.parse(parts[2]),
+      int.parse(parts[1]),
+      int.parse(parts[0]),
+    );
+  } finally {
+    client.close();
+  }
+}
+
+/// Bugünden itibaren [daysAhead] gün içindeki dini günleri getirir.
+/// Hicri yıl [currentHijriYear] ve bir sonraki yıl sorgulanır; sonuç
+/// tarihe göre sıralıdır. Tek bir gün başarısız olursa atlanır.
+Future<List<UpcomingReligiousDay>> upcomingReligiousDays({
+  required int currentHijriYear,
+  required DateTime today,
+  HijriDateFetcher fetcher = fetchGregorianFromAladhan,
+  int daysAhead = 400,
+}) async {
+  final limit = today.add(Duration(days: daysAhead));
+  final result = <UpcomingReligiousDay>[];
+  final seen = <String>{};
+  for (final info in kReligiousDays) {
+    for (final hijriYear in [currentHijriYear, currentHijriYear + 1]) {
+      final key = '${info.month}/${info.day}/$hijriYear';
+      if (!seen.add(key)) continue;
+      try {
+        final date = await fetcher(hijriYear, info.month, info.day);
+        final dateOnly = DateTime(date.year, date.month, date.day);
+        if (dateOnly.isBefore(DateTime(today.year, today.month, today.day))) {
+          continue;
+        }
+        if (dateOnly.isAfter(limit)) continue;
+        result.add(UpcomingReligiousDay(
+          info: info,
+          gregorianDate: date,
+          hijriYear: hijriYear,
+        ));
+      } catch (_) {
+        // Tek günün çevirisi başarısızsa takvimin geri kalanı etkilenmez.
+      }
+    }
+  }
+  result.sort((a, b) => a.gregorianDate.compareTo(b.gregorianDate));
+  return result;
+}

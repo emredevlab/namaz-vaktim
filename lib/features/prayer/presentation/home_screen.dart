@@ -196,6 +196,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 hijriMonth: prayerState.data!.hijriMonth,
                 hijriDay: prayerState.data!.hijriDay,
                 gregorianDate: DateTime.now(),
+                // Kandil geceleri sabah namazıyla biter: gündüz geldiyse
+                // banner gösterilmez.
+                fajrTime: _imsakTimeOf(prayerState.data!),
               ),
             ),
           ],
@@ -329,6 +332,14 @@ final class DeviceLocationFlow {
 
 final class LocationPermissionPermanentlyDeniedException implements Exception {
   const LocationPermissionPermanentlyDeniedException();
+}
+
+/// Bugünün imsak vakti; kandil banner'ı sabahla birlikte kapanır.
+DateTime? _imsakTimeOf(DailyPrayerTimes data) {
+  for (final time in data.times) {
+    if (time.type == PrayerType.imsak) return time.dateTime;
+  }
+  return null;
 }
 
 /// Dini gün / Cuma banner'ı: altın gradient kart, dokununca tam dua açılır.

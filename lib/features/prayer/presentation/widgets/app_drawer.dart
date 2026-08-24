@@ -10,6 +10,7 @@ import '../../prayer_models.dart';
 import '../duas_screen.dart';
 import '../location_picker_screen.dart';
 import '../notification_settings_screen.dart';
+import '../religious_calendar_screen.dart';
 import '../prayer_times_screen.dart';
 import '../qibla_screen.dart';
 
@@ -122,6 +123,19 @@ class _AppDrawerState extends State<AppDrawer> {
                             mode: LaunchMode.externalApplication);
                       },
                     ),
+                  _buildNavItem(
+                    icon: Icons.calendar_month_outlined,
+                    title: 'Dini Takvim',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ReligiousCalendarScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   _buildNavItem(
                     icon: Icons.info_outline,
                     title: 'Hakkında',
