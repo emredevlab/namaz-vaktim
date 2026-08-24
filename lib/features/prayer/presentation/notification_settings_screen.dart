@@ -176,19 +176,68 @@ class _NotificationSettingsScreenState
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await scheduler.scheduleTestNotification();
-                if (!mounted) return;
-                messenger.showSnackBar(
-                  const SnackBar(
-                      content: Text('Test bildirimi 5 saniye içinde gelecek.')),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      await scheduler.showTestNotificationNow();
+                      if (!mounted) return;
+                      messenger.showSnackBar(const SnackBar(
+                          content:
+                              Text('Anında bildirim komutu verildi — şimdi bak!')));
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.flash_on, size: 18),
+                    label: const Text('Hemen göster'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      await scheduler.scheduleTestNotification();
+                      if (!mounted) return;
+                      messenger.showSnackBar(const SnackBar(
+                          content:
+                              Text('Test bildirimi 5 saniye içinde gelecek.')));
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.schedule_send_outlined, size: 18),
+                    label: const Text('5 sn sonra'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            FutureBuilder<bool?>(
+              future: scheduler.canScheduleExactAlarms(),
+              builder: (context, snapshot) {
+                final can = snapshot.data;
+                if (can == null) return const SizedBox.shrink();
+                return Row(
+                  children: [
+                    Icon(
+                      can ? Icons.check_circle : Icons.warning_amber_rounded,
+                      size: 16,
+                      color: can
+                          ? Colors.green
+                          : Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        can
+                            ? 'Tam zamanlı alarm izni: VAR'
+                            : 'Tam zamanlı alarm izni: YOK — bildirimler gecikebilir. Ayarlar > Uygulama > Alarmlar ve hatırlatıcılar bölümünden izin verin.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                 );
-                setState(() {});
               },
-              icon: const Icon(Icons.notifications_active_outlined, size: 18),
-              label: const Text('Test bildirimi gönder (5 sn)'),
             ),
             const SizedBox(height: 12),
             FutureBuilder<List<ScheduledNotificationInfo>>(

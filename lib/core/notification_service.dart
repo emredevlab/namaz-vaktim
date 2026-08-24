@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -98,6 +99,13 @@ abstract interface class LocalNotificationScheduler {
 
   /// Teşhis için: ~5 saniya sonra tetiklenen test bildirimi.
   Future<void> scheduleTestNotification();
+
+  /// Teşhis için: alarm/planlama olmadan HEMEN gösterilen bildirim.
+  /// Bu görünürse gösterim katmanı sağlamdır; sorun alarm katmanındadır.
+  Future<void> showTestNotificationNow();
+
+  /// Cihaz exact alarm planlayabiliyor mu (Android 12+ izin durumu).
+  Future<bool?> canScheduleExactAlarms();
 
   /// Şu an sistemde planlı bekleyen bildirimlerin özeti.
   Future<List<ScheduledNotificationInfo>> pendingNotifications();
@@ -299,7 +307,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     try {
       await _zonedSchedule(
         id: 999,
-        title: 'Test bildirimi',
+        title: 'Test bildirimi (5 sn)',
         body: 'Bildirim sistemi çalışıyor. Namaz vakitleri de böyle gelecek.',
         time: DateTime.now().add(const Duration(seconds: 5)),
         payload: 'route:/prayer-times',
@@ -308,6 +316,35 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       _lastError = null;
     } catch (error) {
       _lastError = 'scheduleTestNotification: $error';
+    }
+  }
+
+  @override
+  Future<void> showTestNotificationNow() async {
+    await _ensureInitialized();
+    try {
+      await _plugin.show(
+        998,
+        'Test bildirimi (anında)',
+        'Gösterim katmanı çalışıyor. Namaz vakitleri de böyle görünecek.',
+        _notificationDetails,
+        payload: 'route:/prayer-times',
+      );
+      _lastError = null;
+    } catch (error) {
+      _lastError = 'showTestNotificationNow: $error';
+    }
+  }
+
+  @override
+  Future<bool?> canScheduleExactAlarms() async {
+    try {
+      // Android 12+ exact alarm izni; USE_EXACT_ALARM manifest'te
+      // bulunduğundan genellikle otomatik tanınır.
+      final status = await ph.Permission.scheduleExactAlarm.status;
+      return status.isGranted || status.isLimited;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -426,6 +463,10 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
   }) async {}
   @override
   Future<void> scheduleTestNotification() async {}
+  @override
+  Future<void> showTestNotificationNow() async {}
+  @override
+  Future<bool?> canScheduleExactAlarms() async => null;
   @override
   Future<List<ScheduledNotificationInfo>> pendingNotifications() async =>
       const [];
