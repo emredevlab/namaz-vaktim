@@ -6,9 +6,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:namaz_vaktim/app/app_providers.dart';
 import 'package:namaz_vaktim/config/app_config.dart';
+import 'package:namaz_vaktim/core/permission_manager.dart';
 import 'package:namaz_vaktim/features/prayer/presentation/home_screen.dart';
 import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
 import 'package:namaz_vaktim/features/prayer/prayer_repository.dart';
+
+final class _RecordingPermissionManager implements PermissionManager {
+  final requested = <AppPermission>[];
+
+  @override
+  Future<PermissionStatus> status(AppPermission permission) =>
+      Future<PermissionStatus>.value(PermissionStatus.denied);
+
+  @override
+  Future<PermissionStatus> request(AppPermission permission) async {
+    requested.add(permission);
+    return PermissionStatus.granted;
+  }
+
+  @override
+  Future<bool> openSettings() async => true;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -137,6 +155,32 @@ void main() {
 
     expect(yatsiTile.top, greaterThanOrEqualTo(viewport.top));
     expect(yatsiTile.bottom, lessThanOrEqualTo(viewport.bottom - gestureInset));
+  });
+
+  testWidgets('entry flow requests notification and location permissions',
+      (tester) async {
+    final config = _configWithFeatures(
+      prayerTimes: true,
+      notifications: true,
+    );
+    final permissions = _RecordingPermissionManager();
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        permissionManagerProvider.overrideWithValue(permissions),
+        prayerRepositoryProvider.overrideWithValue(
+          _CompletingRepository(Completer<DailyPrayerTimes>()),
+        ),
+      ],
+      child: MaterialApp(home: HomeScreen(config: config)),
+    ));
+    await tester.pump();
+    await tester.pump();
+
+    expect(permissions.requested, contains(AppPermission.notification),
+        reason: 'Girişte bildirim izni istenmeli.');
+    expect(permissions.requested, contains(AppPermission.location),
+        reason: 'Girişte konum izni istenmeli.');
   });
 
   testWidgets('drawer renders configured SVG logo', (tester) async {

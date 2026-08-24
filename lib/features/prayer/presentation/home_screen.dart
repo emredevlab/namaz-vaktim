@@ -54,10 +54,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Bildirim izni ilk kare render edildikten sonra istenir; açılış
-    // anında istenirse sistem diyaloğu yutulabiliyor.
+    // İzinler ilk kare render edildikten sonra istenir; açılış anında
+    // istenirse sistem diyaloğu yutulabiliyor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureNotificationPermission();
+      _requestEntryPermissions();
     });
     Future<void>.microtask(() {
       ref.read(prayerControllerProvider).load();
@@ -78,8 +78,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  /// Giriş akışı: önce bildirim, sonra konum izni (henüz verilmediyse).
+  /// Kanal yoksa (test ortamı) sessizce atlanır.
+  Future<void> _requestEntryPermissions() async {
+    await _ensureNotificationPermission();
+    await _ensureLocationPermission();
+  }
+
   /// Android 13+ bildirim iznini yalnızca henüz verilmediyse ve bildirim
-  /// özelliği config'te açıksa ister. Kanal yoksa (test ortamı) sessiz geçer.
+  /// özelliği config'te açıksa ister.
   Future<void> _ensureNotificationPermission() async {
     try {
       if (!(widget.config.features['notifications'] ?? false)) return;
@@ -89,6 +96,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (status == PermissionStatus.denied) {
         await manager.request(AppPermission.notification);
       }
+    } catch (_) {
+      // Platform kanalı yoksa (test) izin akışı sessizce atlanır.
+    }
+  }
+
+  /// Konum izni girişte istenir; kalıcı reddedilmişse tekrar sorulmaz
+  /// (kullanıcı konum butonundan ayarlara yönlendirilir).
+  Future<void> _ensureLocationPermission() async {
+    try {
+      final manager = ref.read(permissionManagerProvider);
+      var status = await manager.status(AppPermission.location);
+      if (status != PermissionStatus.denied) return;
+      await manager.request(AppPermission.location);
     } catch (_) {
       // Platform kanalı yoksa (test) izin akışı sessizce atlanır.
     }

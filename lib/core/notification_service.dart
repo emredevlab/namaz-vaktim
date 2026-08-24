@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -184,6 +185,19 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     tz_data.initializeTimeZones();
+    // KRİTİK: setLocalLocation çağrılmazsa tz.local UTC'ye düşer ve
+    // bildirimler Türkiye'de 3 saat gecikmeli planlanır. Cihazın saat
+    // dilimi okunamazsa Türkçe uygulama olduğu için İstanbul'a düşer.
+    try {
+      final timezone = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezone.identifier));
+    } catch (_) {
+      try {
+        tz.setLocalLocation(tz.getLocation('Europe/Istanbul'));
+      } catch (_) {
+        // Saat dilimi veritabanı tamamen yoksa UTC ile devam (en kötü durum).
+      }
+    }
     const settings = InitializationSettings(
       android: AndroidInitializationSettings('ic_notification'),
       iOS: DarwinInitializationSettings(),
