@@ -146,7 +146,7 @@ final class SpecialDayContent {
 }
 
 /// Hicri tarih + miladi günden bugünün özel içeriğini döndürür.
-/// Önce dini gün, yoksa Cuma kontrol edilir; hiçbiri değilse null.
+/// Sıra: dini gün -> arifesi (yarın dini gün) -> Cuma. Hiçbiri değilse null.
 SpecialDayContent? specialContentFor({
   required int hijriMonth,
   required int hijriDay,
@@ -158,6 +158,21 @@ SpecialDayContent? specialContentFor({
       title: special.title,
       message: special.message,
       dua: special.dua,
+      isFriday: false,
+    );
+  }
+  // Arifesi: yarın dini gün mü? (ay sonu 29/30 için ay devri de denenir)
+  final tomorrowSpecial = matchSpecialDay(hijriMonth, hijriDay + 1) ??
+      matchSpecialDay(hijriMonth + 1, 1);
+  if (tomorrowSpecial != null) {
+    // Hicri gün gün batımında başlar: ikindiden sonraki saatlerde kandil
+    // gecesi zaten yaşanıyor -> 'Bu gece'; daha erken saatlerde 'Yarın'.
+    final isEvening = gregorianDate.hour >= 16;
+    final prefix = isEvening ? 'Bu gece' : 'Yarın';
+    return SpecialDayContent(
+      title: '$prefix ${tomorrowSpecial.title}',
+      message: '$prefix ${tomorrowSpecial.title}. ${tomorrowSpecial.message}',
+      dua: tomorrowSpecial.dua,
       isFriday: false,
     );
   }
