@@ -196,8 +196,10 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     );
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    await android?.requestNotificationsPermission();
-    await android?.requestExactAlarmsPermission();
+    // İzin istekleri BURADA yapılmaz: açılış anında tetiklenince diyalog
+    // yutuluyordu (exact alarm ayar ekranı üzerine açılıyordu). Bildirim
+    // izni HomeScreen ilk kare sonrası PermissionManager üzerinden istenir;
+    // exact alarm ise manifest'teki USE_EXACT_ALARM ile otomatik taninir.
     await android?.createNotificationChannel(const AndroidNotificationChannel(
       _channelId,
       _channelName,

@@ -54,6 +54,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Bildirim izni ilk kare render edildikten sonra istenir; açılış
+    // anında istenirse sistem diyaloğu yutulabiliyor.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureNotificationPermission();
+    });
     Future<void>.microtask(() {
       ref.read(prayerControllerProvider).load();
       _restoreSavedLocation();
@@ -63,7 +68,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           size: AdSize.banner,
           request: const AdRequest(),
           listener: BannerAdListener(
-            onAdLoaded: (_) {
+            onAdLoaded: (ad) {
               if (mounted) setState(() => _bannerReady = true);
             },
             onAdFailedToLoad: (ad, _) => ad.dispose(),
@@ -71,6 +76,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         )..load();
       }
     });
+  }
+
+  /// Android 13+ bildirim iznini yalnızca henüz verilmediyse ve bildirim
+  /// özelliği config'te açıksa ister. Kanal yoksa (test ortamı) sessiz geçer.
+  Future<void> _ensureNotificationPermission() async {
+    try {
+      if (!(widget.config.features['notifications'] ?? false)) return;
+      final manager = ref.read(permissionManagerProvider);
+      var status = await manager.status(AppPermission.notification);
+      if (status == PermissionStatus.granted) return;
+      if (status == PermissionStatus.denied) {
+        await manager.request(AppPermission.notification);
+      }
+    } catch (_) {
+      // Platform kanalı yoksa (test) izin akışı sessizce atlanır.
+    }
   }
 
   Future<void> _restoreSavedLocation() async {
