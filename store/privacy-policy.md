@@ -17,7 +17,7 @@ KapadokyaBulut ("biz", "işletici"), **Namaz Vaktim** mobil uygulamasını (pake
 ### 2.1 Konum Verisi
 - Uygulama, namaz vakitlerini doğru gösterebilmek için konum bilgisinden yararlanabilir.
 - Konum verisi **yalnızca cihaz üzerinde işlenir**; sürekli konum izleme yapılmaz, arka planda konum toplanmaz.
-- Namaz vakti sorgusu için yalnızca **şehir adı veya koordinat** bilgisi, bu tekil amaçla `api.kapadokyabulut.com.tr` servisine gönderilir. Konumunuzla ilişkilendirilebilir kalıcı bir kullanıcı profili oluşturulmaz.
+- Namaz vakti sorgusu için yalnızca **şehir adı veya koordinat** bilgisi, bu tekil amaçla Aladhan.com namaz vakitleri servisine gönderilir (Diyanet İşleri hesap yöntemi). Konumunuzla ilişkilendirilebilir kalıcı bir kullanıcı profili oluşturulmaz.
 - GPS kullanımı tamamen isteğe bağlıdır; uygulamayı şehir seçerek kullanmaya devam edebilirsiniz.
 
 ### 2.2 Bildirim Tercihleri
@@ -35,7 +35,7 @@ Kişisel verilerinizi satmayız; doğrudan pazarlama amacıyla üçüncü tarafl
 | Servis | Amaç | Erişilen veri |
 |--------|------|----------------|
 | Google AdMob | Reklam görüntüleme | Reklam kimliği, cihaza ilişkin teknik veriler |
-| api.kapadokyabulut.com.tr | Namaz vakitleri sorgusu | Şehir adı veya koordinat |
+| api.aladhan.com | Namaz vakitleri sorgusu | Şehir adı veya koordinat |
 
 Bu servislerin kendi gizlilik politikaları geçerlidir; Google'ın reklam politikalarına [buradan](https://policies.google.com/technologies/ads) ulaşabilirsiniz.
 

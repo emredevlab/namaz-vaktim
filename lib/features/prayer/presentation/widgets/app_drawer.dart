@@ -129,29 +129,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       final appVersion = await _appVersionFuture;
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      showAboutDialog(
-                        context: context,
-                        applicationName: widget.config.name,
-                        applicationVersion: appVersion,
-                        applicationLegalese: '© 2026 KapadokyaBulut',
-                        applicationIcon: SvgPicture.asset(
-                          widget.config.logoAsset,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.contain,
-                          semanticsLabel: '${widget.config.name} logosu',
-                          placeholderBuilder: (_) => const Icon(
-                            Icons.mosque_outlined,
-                            color: AppTheme.primary,
-                            size: 40,
-                          ),
-                        ),
-                        children: const [
-                          Text('Namaz vakitleri, kıble pusulası ve dualar'),
-                          SizedBox(height: 8),
-                          Text('Veriler: api.kapadokyabulut.com.tr'),
-                        ],
-                      );
+                      _showAboutSheet(context, appVersion);
                     },
                   ),
                 ],
@@ -288,6 +266,112 @@ class _AppDrawerState extends State<AppDrawer> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  /// Hakkında diyaloğu: kısa, öz; lisans listesi yok.
+  void _showAboutSheet(BuildContext context, String appVersion) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = isDark ? AppTheme.cream : AppTheme.primaryDeep;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor:
+            isDark ? AppTheme.darkCard : Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: AppTheme.goldGradient,
+                shape: BoxShape.circle,
+              ),
+              child: SvgPicture.asset(
+                widget.config.logoAsset,
+                width: 52,
+                height: 52,
+                fit: BoxFit.contain,
+                semanticsLabel: '${widget.config.name} logosu',
+                placeholderBuilder: (_) => const Icon(
+                  Icons.mosque_outlined,
+                  color: AppTheme.primaryDeep,
+                  size: 44,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              widget.config.name,
+              style: TextStyle(
+                color: onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'v$appVersion',
+              style: TextStyle(
+                color: onSurface.withValues(alpha: .55),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Namaz vakitleri, kıble pusulası ve dualar',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: onSurface.withValues(alpha: .8),
+                fontSize: 13.5,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: (isDark ? AppTheme.gold : AppTheme.primary)
+                    .withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                'Vakit verileri: Aladhan.com\nDiyanet İşleri hesap yöntemi',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                  color: isDark ? AppTheme.goldSoft : AppTheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Powered by Emre',
+              style: TextStyle(
+                color: onSurface.withValues(alpha: .6),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .6,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Kapat'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
