@@ -68,6 +68,19 @@ final class NotificationPreferencesStore {
   }
 }
 
+/// Planlanmış bir bildirimin özet bilgisi (teşhis ekranı için).
+final class ScheduledNotificationInfo {
+  const ScheduledNotificationInfo({
+    required this.id,
+    required this.title,
+    required this.body,
+  });
+
+  final int id;
+  final String title;
+  final String body;
+}
+
 abstract interface class LocalNotificationScheduler {
   Future<void> schedulePrayer(
       {required int id,
@@ -82,6 +95,15 @@ abstract interface class LocalNotificationScheduler {
     required String body,
     required DateTime anchor,
   });
+
+  /// Teşhis için: ~5 saniya sonra tetiklenen test bildirimi.
+  Future<void> scheduleTestNotification();
+
+  /// Şu an sistemde planlı bekleyen bildirimlerin özeti.
+  Future<List<ScheduledNotificationInfo>> pendingNotifications();
+
+  /// Son planlama hatası; teşhis ekranında gösterilir. Hata yoksa null.
+  String? get lastError;
 
   Future<String?> initialPayload();
 
@@ -166,6 +188,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   final FlutterLocalNotificationsPlugin _plugin;
   final void Function(String? payload)? _onNotificationTap;
   bool _initialized = false;
+  String? _lastError;
 
   static const String _channelId = 'prayer_times';
   static const String _channelName = 'Namaz vakitleri';
@@ -232,14 +255,19 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   }) async {
     await _ensureInitialized();
     if (!time.isAfter(DateTime.now())) return;
-    await _zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      time: time,
-      payload: 'route:/prayer-times',
-      daily: false,
-    );
+    try {
+      await _zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        time: time,
+        payload: 'route:/prayer-times',
+        daily: false,
+      );
+      _lastError = null;
+    } catch (error) {
+      _lastError = 'schedulePrayer($id): $error';
+    }
   }
 
   @override
@@ -250,15 +278,59 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required DateTime anchor,
   }) async {
     await _ensureInitialized();
-    await _zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      time: anchor,
-      payload: 'route:/prayer-times',
-      daily: true,
-    );
+    try {
+      await _zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        time: anchor,
+        payload: 'route:/prayer-times',
+        daily: true,
+      );
+      _lastError = null;
+    } catch (error) {
+      _lastError = 'scheduleDailyReminder: $error';
+    }
   }
+
+  @override
+  Future<void> scheduleTestNotification() async {
+    await _ensureInitialized();
+    try {
+      await _zonedSchedule(
+        id: 999,
+        title: 'Test bildirimi',
+        body: 'Bildirim sistemi çalışıyor. Namaz vakitleri de böyle gelecek.',
+        time: DateTime.now().add(const Duration(seconds: 5)),
+        payload: 'route:/prayer-times',
+        daily: false,
+      );
+      _lastError = null;
+    } catch (error) {
+      _lastError = 'scheduleTestNotification: $error';
+    }
+  }
+
+  @override
+  Future<List<ScheduledNotificationInfo>> pendingNotifications() async {
+    try {
+      await _ensureInitialized();
+      final pending = await _plugin.pendingNotificationRequests();
+      return [
+        for (final request in pending)
+          ScheduledNotificationInfo(
+            id: request.id,
+            title: request.title ?? '',
+            body: request.body ?? '',
+          ),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  String? get lastError => _lastError;
 
   @override
   Future<String?> initialPayload() async {
@@ -316,6 +388,13 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
     required String body,
     required DateTime anchor,
   }) async {}
+  @override
+  Future<void> scheduleTestNotification() async {}
+  @override
+  Future<List<ScheduledNotificationInfo>> pendingNotifications() async =>
+      const [];
+  @override
+  String? get lastError => null;
   @override
   Future<String?> initialPayload() async => null;
   @override

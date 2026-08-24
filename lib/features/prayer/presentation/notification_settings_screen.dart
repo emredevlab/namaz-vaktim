@@ -135,7 +135,123 @@ class _NotificationSettingsScreenState
               label: const Text('Kaydet'),
             ),
           ),
+          const SizedBox(height: 28),
+          _buildDiagnostics(context),
         ],
+      ),
+    );
+  }
+
+  /// Teşhis paneli: planlı bildirimleri listeler, test bildirimi gönderir
+  /// ve planlama hatalarını görünür kılar.
+  Widget _buildDiagnostics(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheduler = ref.read(notificationSchedulerProvider);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildIconBox(Icons.bug_report_outlined, isDark),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Bildirim teşhisi',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Bildirim gelmiyorsa önce test bildirimi gönderin; sonra '
+              'telefonun pil optimizasyonundan uygulamaya "kısıtlama yok" '
+              'verin (Xiaomi/Huawei gibi cihazlarda gerekli).',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await scheduler.scheduleTestNotification();
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  const SnackBar(
+                      content: Text('Test bildirimi 5 saniye içinde gelecek.')),
+                );
+                setState(() {});
+              },
+              icon: const Icon(Icons.notifications_active_outlined, size: 18),
+              label: const Text('Test bildirimi gönder (5 sn)'),
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<List<ScheduledNotificationInfo>>(
+              future: scheduler.pendingNotifications(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                }
+                final pending = snapshot.data ?? const [];
+                if (pending.isEmpty) {
+                  return Text(
+                    'Planlı bildirim yok — bildirimler henüz planlanmamış '
+                    'veya planlama hata verdi.',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12.5),
+                  );
+                }
+                return ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  title: Text('Planlı bildirimler: ${pending.length}',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700)),
+                  subtitle: const Text('Detayları görmek için dokun',
+                      style: TextStyle(fontSize: 12)),
+                  children: [
+                    for (final item in pending)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Text('#${item.id}',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontFeatures: [FontFeature.tabularFigures()])),
+                        title: Text(item.title,
+                            style: const TextStyle(fontSize: 13)),
+                        subtitle: Text(item.body,
+                            style: const TextStyle(fontSize: 11.5)),
+                      ),
+                  ],
+                );
+              },
+            ),
+            FutureBuilder<String?>(
+              future: Future<String?>.value(scheduler.lastError),
+              builder: (context, snapshot) {
+                final error = snapshot.data;
+                if (error == null || error.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Son hata: $error',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 11.5),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
