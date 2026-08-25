@@ -67,7 +67,7 @@ void callbackDispatcher() {
         android: AndroidInitializationSettings('ic_notification'),
       ));
       const androidDetails = AndroidNotificationDetails(
-        'prayer_timesezan_mekke',
+        'prayer_times_v2ezan_mekke',
         'Namaz vakitleri',
         channelDescription: 'Namaz vakti hatırlatmaları',
         importance: Importance.high,

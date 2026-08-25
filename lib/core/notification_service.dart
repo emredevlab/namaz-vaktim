@@ -20,6 +20,7 @@ class NotificationPreferences {
   /// veya 'default' = sistem sesi.
   static const approachSoundOptions = {
     'notification_chime': 'Zil sesi',
+    'chime_soft': 'Yumuşak zil',
     'ezan_mekke': 'Ezan (Mekke)',
     'default': 'Sistem sesi',
   };
@@ -28,6 +29,9 @@ class NotificationPreferences {
   static const entrySoundOptions = {
     'ezan_mekke': 'Ezan (Mekke)',
     'ezan_medine': 'Ezan (Medine)',
+    'ezan_3': 'Ezan (Kayıt 3)',
+    'ezan_4': 'Ezan (Kayıt 4)',
+    'ezan_5': 'Ezan (Kayıt 5)',
     'notification_chime': 'Zil sesi',
     'default': 'Sistem sesi',
   };
@@ -235,15 +239,19 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   bool _initialized = false;
   String? _lastError;
 
-  static const String _channelId = 'prayer_times';
+  static const String _channelId = 'prayer_times_v2';
+  static const String _legacyChannelId = 'prayer_times';
   static const String _channelName = 'Namaz vakitleri';
   static const String _channelDescription = 'Namaz vakti hatırlatmaları';
 
   /// Ses başına ayrı Android kanalı gerekir: kanal ses ayarı ilk
   /// yaratıldığında sabitlenir. Ses değişince yeni kanal id'si kullanılır.
+  /// KRİTİK: varsayılan ses boş sonekle _ensureInitialized'ın oluşturduğu
+  /// 'prayer_times_v2' kanalına gitmeli — var olmayan kanala giden bildirim
+  /// Android 8+ üzerinde sessizce düşer!
   NotificationDetails _notificationDetails(String? sound) {
     final channelKey = sound == null || sound == 'default'
-        ? 'default'
+        ? ''
         : sound.replaceAll(RegExp(r'[^a-z0-9_]'), '');
     final androidDetails = AndroidNotificationDetails(
       '$_channelId$channelKey',
@@ -297,6 +305,11 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       description: _channelDescription,
       importance: Importance.high,
     ));
+    // Eski sürümlerin sessiz kanalını temizle (kullanıcının bildirim
+    // gölgesinde çöp kalmasın).
+    try {
+      await android?.deleteNotificationChannel(_legacyChannelId);
+    } catch (_) {}
     _initialized = true;
   }
 
