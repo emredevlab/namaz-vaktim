@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
@@ -169,6 +171,9 @@ abstract interface class LocalNotificationScheduler {
   /// Son planlama hatası; teşhis ekranında gösterilir. Hata yoksa null.
   String? get lastError;
 
+  /// Cihaz içi olay kaydı (planlama zinciri adımları, en yeniden eskiye).
+  Future<List<String>> eventLog();
+
   Future<String?> initialPayload();
 
   Future<void> cancelAll();
@@ -255,6 +260,40 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   final void Function(String? payload)? _onNotificationTap;
   bool _initialized = false;
   String? _lastError;
+  final List<String> _eventLog = [];
+  static const int _eventLogLimit = 15;
+  static const String _eventLogKey = 'notification_event_log';
+
+  /// Cihaz içi teşhis kaydı: planlama zincirinin her adımı zaman damgalı
+  /// yazılır ve kalıcı saklanır (uygulama kapansa bile kaybolmaz).
+  Future<void> _logEvent(String message) async {
+    final now = DateTime.now();
+    final stamp =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    _eventLog.insert(0, '$stamp $message');
+    if (_eventLog.length > _eventLogLimit) {
+      _eventLog.removeLast();
+    }
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(
+          _eventLogKey, jsonEncode(_eventLog));
+    } catch (_) {}
+  }
+
+  @override
+  Future<List<String>> eventLog() async {
+    if (_eventLog.isNotEmpty) return List.unmodifiable(_eventLog);
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final raw = preferences.getString(_eventLogKey);
+      if (raw != null) {
+        final decoded = jsonDecode(raw) as List<dynamic>;
+        _eventLog.addAll(decoded.cast<String>());
+      }
+    } catch (_) {}
+    return List.unmodifiable(_eventLog);
+  }
 
   static const String _channelId = 'prayer_times_v2';
   static const String _legacyChannelId = 'prayer_times';
@@ -328,6 +367,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       await android?.deleteNotificationChannel(_legacyChannelId);
     } catch (_) {}
     _initialized = true;
+    await _logEvent('Zamanlayıcı hazır (kanal: $_channelId)');
   }
 
   @override
@@ -339,7 +379,10 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     String? sound,
   }) async {
     await _ensureInitialized();
-    if (!time.isAfter(DateTime.now())) return;
+    if (!time.isAfter(DateTime.now())) {
+      await _logEvent('Atlandı: id=$id zamanı geçmiş');
+      return;
+    }
     try {
       await _zonedSchedule(
         id: id,
@@ -351,8 +394,11 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         sound: sound,
       );
       _lastError = null;
+      await _logEvent(
+          'Planlandı: id=$id ses=$sound saat=${time.hour}:${time.minute.toString().padLeft(2, '0')}');
     } catch (error) {
       _lastError = 'schedulePrayer($id): $error';
+      await _logEvent('HATA schedulePrayer($id): $error');
     }
   }
 
@@ -525,6 +571,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         }
       } catch (error) {
         _lastError = 'Ses kanalı oluşturulamadı ($sound): $error';
+        await _logEvent('HATA ses kanalı ($sound): $error');
         details = _notificationDetails(null);
       }
     }
@@ -540,8 +587,11 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         // BİRİNCİL: cihazda test edilmiş çalışan mod (setExactAndAllowWhileIdle).
         mode: AndroidScheduleMode.exactAllowWhileIdle,
       );
+      await _logEvent('Planlandı (exact) id=$id');
       return;
-    } catch (_) {}
+    } catch (e) {
+      await _logEvent('exactAllowWhileIdle başarısız id=$id: $e');
+    }
     try {
       await _scheduleWithMode(
         id: id,
@@ -555,8 +605,11 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         // yalnızca birincil başarısız olursa denenir.
         mode: AndroidScheduleMode.alarmClock,
       );
+      await _logEvent('Planlandı (alarmClock) id=$id');
       return;
-    } catch (_) {}
+    } catch (e) {
+      await _logEvent('alarmClock başarısız id=$id: $e');
+    }
     _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
     await _scheduleWithMode(
       id: id,
@@ -568,6 +621,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       details: details,
       mode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
+    await _logEvent('Planlandı (inexact) id=$id — gecikebilir');
   }
 
   Future<void> _scheduleWithMode({
@@ -625,6 +679,8 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
   Future<void> showSoundPreview(String sound) async {}
   @override
   Future<bool?> canScheduleExactAlarms() async => null;
+  @override
+  Future<List<String>> eventLog() async => const [];
   @override
   Future<List<ScheduledNotificationInfo>> pendingNotifications() async =>
       const [];

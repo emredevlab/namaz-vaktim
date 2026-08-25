@@ -397,12 +397,49 @@ class _NotificationSettingsScreenState
                 if (error == null || error.isEmpty) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Son hata: $error',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 11.5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Son hata (kopyalayıp gönderin):',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.error)),
+                      SelectableText(
+                        error,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontSize: 11.5),
+                      ),
+                    ],
                   ),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            FutureBuilder<List<String>>(
+              future: scheduler.eventLog(),
+              builder: (context, snapshot) {
+                final log = snapshot.data ?? const <String>[];
+                if (log.isEmpty) return const SizedBox.shrink();
+                return ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  title: const Text('Olay kaydı',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  subtitle: const Text('Planlama zinciri adımları',
+                      style: TextStyle(fontSize: 11.5)),
+                  children: [
+                    for (final entry in log)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SelectableText(
+                          entry,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),

@@ -48,6 +48,9 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
   Future<bool?> canScheduleExactAlarms() async => null;
 
   @override
+  Future<List<String>> eventLog() async => const [];
+
+  @override
   Future<List<ScheduledNotificationInfo>> pendingNotifications() async =>
       const [];
 
