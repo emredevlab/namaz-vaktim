@@ -2,6 +2,15 @@
 
 Tüm önemli değişiklikler bu dosyada belgelenir. Sürümler [SemVer](https://semver.org/) ilkelerini izler; tarihler YYYY-MM-DD biçimindedir.
 
+## 2.2.3+31 - 2026-08-26
+
+### Test bildirimi ve ses akışı düzeltmeleri
+
+- **5 saniyelik test bildirimi artık silinmiyor:** Dakikalık otomatik yenileme her çalıştığında `cancelAll` ile TÜM planlı bildirimler iptal ediliyor, yeni planlanan test bildirimini de öldürüyordu. Artık yalnızca planner'ın yönettiği id'ler (vakitler, +50 vakit girişleri, günlük hatırlatma) iptal edilir; test bildirimi (id=999) korunur.
+- **Zil sesleri sessiz kalan cihazlarda düzeltildi:** Tüm sesler alarm sesi akışına bağlıydı; alarm sesi kısık/sessiz olan telefonlarda (ör. Android 11) bildirim sadece titreşimle geliyordu. Zil sesleri artık bildirim sesi akışından çalar; ezan sesleri sessiz modda bile duyulsun diye alarm akışında kalır.
+- Kanal şeması `v4`'e taşındı; eski v2/v3 kanalları açılışta temizlenir.
+- 5 sn test planlaması teşhis olay kaydına yazılır (hedef saat + ses).
+
 ## 2.2.2+30 - 2026-08-26
 
 ### Bildirim sesleri ve test bildirimi düzeltmeleri

@@ -6,6 +6,7 @@ import 'package:namaz_vaktim/features/prayer/prayer_models.dart';
 
 final class _RecordingScheduler implements LocalNotificationScheduler {
   bool cancelled = false;
+  final cancelledIds = <int>{};
   final times = <DateTime>[];
   final sounds = <String?>[];
   final requests = <({int id, String title, String body, DateTime time})>[];
@@ -13,6 +14,9 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
 
   @override
   Future<void> cancelAll() async => cancelled = true;
+
+  @override
+  Future<void> cancelByIds(Set<int> ids) async => cancelledIds.addAll(ids);
 
   @override
   Future<void> schedulePrayer({
@@ -119,7 +123,8 @@ void main() {
       const NotificationPreferences(minutesBefore: 15, notifyAtTime: false),
     );
 
-    expect(scheduler.cancelled, isTrue);
+    expect(scheduler.cancelledIds, isNotEmpty,
+        reason: 'Eski planlar id bazlı iptal edilmeli (cancelAll yarışı yok).');
     expect(scheduler.times.single,
         prayerTime.subtract(const Duration(minutes: 15)));
     expect(scheduler.requests.single.body, _approachBody);
@@ -149,6 +154,23 @@ void main() {
       expect(onTime.body, '${request.title} vakti girdi.');
       expect(onTime.time, request.prayerTime);
     }
+  });
+
+  test('planner cancels only managed ids and keeps the test notification',
+      () async {
+    final scheduler = _RecordingScheduler();
+    final planner = PrayerNotificationPlanner(scheduler: scheduler);
+    final requests = _allPrayerRequests();
+
+    await planner.synchronize(
+        requests, const NotificationPreferences(notifyAtTime: true));
+
+    expect(scheduler.cancelledIds, containsAll([0, 5, 50, 55, 100]),
+        reason: 'Vakit, vakit girişi (+50) ve günlük hatırlatma id\'leri '
+            'iptal kapsamında olmalı.');
+    expect(scheduler.cancelledIds, isNot(contains(999)),
+        reason: 'Dakikalık yenileme, bekleyen 5 sn test bildirimini '
+            '(id=999) silmemeli.');
   });
 
   test('planner skips on-time notifications when notifyAtTime is false',

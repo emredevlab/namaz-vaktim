@@ -155,6 +155,12 @@ abstract interface class LocalNotificationScheduler {
     required DateTime anchor,
   });
 
+  /// Yalnızca verilen id'lerdeki BEKLEYEN planlı bildirimleri iptal eder.
+  /// cancelAll yerine kullanılır: test bildirimi (999) gibi planner'a
+  /// ait olmayan planlar silinmez — dakikalık yenileme, 5 sn'lik testi
+  /// öldürüyordu.
+  Future<void> cancelByIds(Set<int> ids);
+
   /// Teşhis için: ~5 saniya sonra tetiklenen test bildirimi. [sound]
   /// verilirse gerçek vakit bildirimiyle AYNI kanal ve ses kullanılır —
   /// uçtan uca doğrulama sağlar.
@@ -207,7 +213,14 @@ final class PrayerNotificationPlanner {
 
   Future<void> synchronize(Iterable<PrayerNotificationRequest> requests,
       NotificationPreferences preferences) async {
-    await scheduler.cancelAll();
+    // cancelAll YOK: yalnızca bu planner'ın yönettiği id'ler iptal edilir.
+    // (Vakit id'leri, +50 vakit girişi eşleri ve günlük hatırlatma 100.)
+    // Aksi halde dakikalık yenileme, yeni planlanan 5 sn'lik test
+    // bildirimini de siliyordu.
+    await scheduler.cancelByIds({
+      for (final request in requests) ...[request.id, request.id + 50],
+      dailyReminderNotificationId,
+    });
     if (!preferences.enabled) return;
     if (!_supportedLeadMinutes.contains(preferences.minutesBefore)) {
       throw ArgumentError.value(
@@ -301,16 +314,24 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     return List.unmodifiable(_eventLog);
   }
 
-  /// v3: Android 8+ kanal ayarları İLK yaratılışta sabitlenir; eski
-  /// sürümlerde sessiz/yanlış yaratılmış 'prayer_times_v2*' kanalları
-  /// uygulama güncellense bile düzeltilemezdi (ezan okunmama şikayetinin
-  /// kök nedeni). Şema sürümü yükseltilerek temiz kanallar garanti edilir.
-  static const String _channelId = 'prayer_times_v3';
+  /// v4: Ses akışı ayrımı eklendi — zil sesleri bildirim (notification)
+  /// akışından, ezan sesleri alarm (alarm) akışından çalar. Önceki
+  /// sürümde TÜM sesler alarm akışındaydı; alarm sesi kısık/sessiz olan
+  /// cihazlarda ziller hiç duyulmuyordu (sessizlik + titreşim şikayeti).
+  /// Kanal ayarları ilk yaratılışta sabitlendiğinden şema sürümü yeniden
+  /// yükseltilir.
+  static const String _channelId = 'prayer_times_v4';
+
+  /// Ezan sesleri sessiz modda bile çalar (USAGE_ALARM); zil sesleri
+  /// normal bildirim sesidir.
+  static bool _isAdhanSound(String? sound) =>
+      sound != null && sound.startsWith('ezan');
 
   /// Önceki şemalardan bilinen tüm kanal id'leri; init sırasında silinir.
   static const List<String> _legacyChannelIds = [
     'prayer_times',
     'prayer_times_v2',
+    'prayer_times_v3',
     'prayer_times_v2notification_chime',
     'prayer_times_v2chime_soft',
     'prayer_times_v2ezan_vakit',
@@ -319,6 +340,14 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     'prayer_times_v2ezan_3',
     'prayer_times_v2ezan_4',
     'prayer_times_v2ezan_5',
+    'prayer_times_v3notification_chime',
+    'prayer_times_v3chime_soft',
+    'prayer_times_v3ezan_vakit',
+    'prayer_times_v3ezan_mekke',
+    'prayer_times_v3ezan_medine',
+    'prayer_times_v3ezan_3',
+    'prayer_times_v3ezan_4',
+    'prayer_times_v3ezan_5',
   ];
   static const String _channelName = 'Namaz vakitleri';
   static const String _channelDescription = 'Namaz vakti hatırlatmaları';
@@ -332,6 +361,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     final channelKey = sound == null || sound == 'default'
         ? ''
         : sound.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    final adhan = _isAdhanSound(sound);
     final androidDetails = AndroidNotificationDetails(
       '$_channelId$channelKey',
       _channelName,
@@ -341,7 +371,8 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       sound: sound == null || sound == 'default'
           ? null
           : RawResourceAndroidNotificationSound(sound),
-      audioAttributesUsage: AudioAttributesUsage.alarm,
+      audioAttributesUsage:
+          adhan ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
     );
     return NotificationDetails(android: androidDetails, iOS: const DarwinNotificationDetails());
   }
@@ -452,6 +483,16 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   }
 
   @override
+  Future<void> cancelByIds(Set<int> ids) async {
+    await _ensureInitialized();
+    for (final id in ids) {
+      try {
+        await _plugin.cancel(id);
+      } catch (_) {}
+    }
+  }
+
+  @override
   Future<void> scheduleTestNotification({String? sound}) async {
     await _ensureInitialized();
     try {
@@ -467,8 +508,12 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         sound: sound,
       );
       _lastError = null;
+      final target = DateTime.now().add(const Duration(seconds: 5));
+      await _logEvent(
+          'Test planlandı (id=999): ${target.hour}:${target.minute.toString().padLeft(2, '0')}:${target.second.toString().padLeft(2, '0')} hedefi, ses=$sound');
     } catch (error) {
       _lastError = 'scheduleTestNotification: $error';
+      await _logEvent('HATA scheduleTestNotification: $error');
     }
   }
 
@@ -697,6 +742,8 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
     required String body,
     required DateTime anchor,
   }) async {}
+  @override
+  Future<void> cancelByIds(Set<int> ids) async {}
   @override
   Future<void> scheduleTestNotification({String? sound}) async {}
   @override

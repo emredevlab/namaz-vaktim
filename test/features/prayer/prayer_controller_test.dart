@@ -15,6 +15,9 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
   Future<void> cancelAll() async => cancelCount++;
 
   @override
+  Future<void> cancelByIds(Set<int> ids) async => cancelCount++;
+
+  @override
   Future<void> schedulePrayer({
     required int id,
     required String title,
