@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../core/notification_service.dart';
+import '../../core/prayer_backup_worker.dart';
 import '../../shared/formatting.dart';
 import 'prayer_models.dart';
 import 'prayer_repository.dart';
@@ -111,6 +112,9 @@ final class PrayerController extends ChangeNotifier {
           DateTime.now().add(const Duration(days: 1)),
         );
         _state = _state.copyWith(tomorrow: tomorrowData);
+        // Yedek görev (workmanager) bugünün vakitlerini buradan okur:
+        // alarm katmanı engellenirse bile bildirim garantisi.
+        unawaited(writeBackupData(data));
         // Yarının bildirimleri de planlanır: kullanıcı uygulamayı yarın
         // hiç açmasa bile vakit bildirimleri vaktinde gelir. Id çakışmasını
         // önlemek için yarın +200 ofsetiyle planlanır. Gün değişmedikçe

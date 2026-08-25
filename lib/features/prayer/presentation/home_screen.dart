@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/app_providers.dart';
@@ -80,11 +81,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  /// Giriş akışı: önce bildirim, sonra konum izni (henüz verilmediyse).
+  /// Giriş akışı: bildirim izni -> konum izni -> pil optimizasyonu
+  /// muafiyeti (sistem diyaloğu; ayar menüsüne gitmek gerekmez).
   /// Kanal yoksa (test ortamı) sessizce atlanır.
   Future<void> _requestEntryPermissions() async {
     await _ensureNotificationPermission();
     await _ensureLocationPermission();
+    await _ensureBatteryExemption();
   }
 
   /// Android 13+ bildirim iznini yalnızca henüz verilmediyse ve bildirim
@@ -113,6 +116,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await manager.request(AppPermission.location);
     } catch (_) {
       // Platform kanalı yoksa (test) izin akışı sessizce atlanır.
+    }
+  }
+
+  /// Pil optimizasyonu muafiyeti: bildirimlerin Doze/üretici
+  /// kısıtlamalarına takılmadan vaktinde gelmesini sağlar. Sistem
+  /// diyaloğu tek dokunuşla onaylanır; zaten muaf ise sorulmaz.
+  Future<void> _ensureBatteryExemption() async {
+    try {
+      final status = await ph.Permission.ignoreBatteryOptimizations.status;
+      if (status.isGranted) return;
+      await ph.Permission.ignoreBatteryOptimizations.request();
+    } catch (_) {
+      // Platform kanalı yoksa (test) sessizce atlanır.
     }
   }
 

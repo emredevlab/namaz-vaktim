@@ -472,13 +472,27 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        mode: AndroidScheduleMode.exactAllowWhileIdle,
+        // alarmClock modu: MIUI/Xiaomi gibi agresif üreticiler dahil
+        // en geniş korunuma sahip mod (saat uygulaması muamelesi görür).
+        mode: AndroidScheduleMode.alarmClock,
       );
       return;
     } catch (_) {
-      // Exact alarm izni/uygulanabilirliği yoksa inexact ile devam —
-      // gecikmeli de olsa bildirim gelmesi sessiz kalmaktan iyidir.
+      // alarmClock desteklenmezse exact, o da olmazsa inexact ile devam.
     }
+    try {
+      await _scheduleWithMode(
+        id: id,
+        title: title,
+        body: body,
+        time: time,
+        payload: payload,
+        daily: daily,
+        details: details,
+        mode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      return;
+    } catch (_) {}
     _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
     await _scheduleWithMode(
       id: id,
