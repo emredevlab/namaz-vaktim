@@ -145,49 +145,85 @@ class _NotificationSettingsScreenState
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _approachSound,
-                    decoration: const InputDecoration(
-                      labelText: 'Vakit yaklaşırken',
-                      helperText: 'Yaklaşım bildiriminde çalınacak ses',
-                    ),
-                    items: NotificationPreferences.approachSoundOptions.entries
-                        .map((entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ))
-                        .toList(),
-                    onChanged: _enabled
-                        ? (value) {
-                            if (value != null) {
-                              setState(() => _approachSound = value);
-                            }
-                          }
-                        : null,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _approachSound,
+                          decoration: const InputDecoration(
+                            labelText: 'Vakit yaklaşırken',
+                            helperText: 'Yaklaşım bildiriminde çalınacak ses',
+                          ),
+                          items: NotificationPreferences
+                              .approachSoundOptions.entries
+                              .map((entry) => DropdownMenuItem(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  ))
+                              .toList(),
+                          onChanged: _enabled
+                              ? (value) {
+                                  if (value != null) {
+                                    setState(() => _approachSound = value);
+                                  }
+                                }
+                              : null,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Dinle',
+                        onPressed: _enabled
+                            ? () => ref
+                                .read(notificationSchedulerProvider)
+                                .showSoundPreview(_approachSound)
+                            : null,
+                        icon: const Icon(Icons.play_circle_outline),
+                        color: AppTheme.primary,
+                      ),
+                    ],
                   ),
                 ),
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _entrySound,
-                    decoration: const InputDecoration(
-                      labelText: 'Vakit girince',
-                      helperText: 'Vaktin kendisinde çalınacak ses (ezan)',
-                    ),
-                    items: NotificationPreferences.entrySoundOptions.entries
-                        .map((entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ))
-                        .toList(),
-                    onChanged: _enabled
-                        ? (value) {
-                            if (value != null) {
-                              setState(() => _entrySound = value);
-                            }
-                          }
-                        : null,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _entrySound,
+                          decoration: const InputDecoration(
+                            labelText: 'Vakit girince',
+                            helperText:
+                                'Vaktin kendisinde çalınacak ses (ezan)',
+                          ),
+                          items: NotificationPreferences.entrySoundOptions.entries
+                              .map((entry) => DropdownMenuItem(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  ))
+                              .toList(),
+                          onChanged: _enabled
+                              ? (value) {
+                                  if (value != null) {
+                                    setState(() => _entrySound = value);
+                                  }
+                                }
+                              : null,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Dinle',
+                        onPressed: _enabled
+                            ? () => ref
+                                .read(notificationSchedulerProvider)
+                                .showSoundPreview(_entrySound)
+                            : null,
+                        icon: const Icon(Icons.play_circle_outline),
+                        color: AppTheme.gold,
+                      ),
+                    ],
                   ),
                 ),
               ],

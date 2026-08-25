@@ -143,6 +143,10 @@ abstract interface class LocalNotificationScheduler {
   /// Bu görünürse gösterim katmanı sağlamdır; sorun alarm katmanındadır.
   Future<void> showTestNotificationNow();
 
+  /// Seçilen sesle ANINDA önizleme bildirimi gösterir (ayarlar ekranı
+  /// dinleme butonu için). Kanal yoksa oluşturur.
+  Future<void> showSoundPreview(String sound);
+
   /// Cihaz exact alarm planlayabiliyor mu (Android 12+ izin durumu).
   Future<bool?> canScheduleExactAlarms();
 
@@ -398,6 +402,38 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   }
 
   @override
+  Future<void> showSoundPreview(String sound) async {
+    await _ensureInitialized();
+    try {
+      final details = _notificationDetails(sound);
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      final androidDetails = details.android;
+      if (android != null && androidDetails != null) {
+        await android.createNotificationChannel(
+            AndroidNotificationChannel(
+          androidDetails.channelId,
+          androidDetails.channelName,
+          description: androidDetails.channelDescription,
+          importance: androidDetails.importance,
+          sound: androidDetails.sound,
+          audioAttributesUsage: androidDetails.audioAttributesUsage,
+        ));
+      }
+      await _plugin.show(
+        997,
+        'Ses önizleme',
+        sound == 'default' ? 'Sistem sesi çalacak.' : 'Seçilen ses: $sound',
+        details,
+        payload: 'route:/prayer-times',
+      );
+      _lastError = null;
+    } catch (error) {
+      _lastError = 'showSoundPreview($sound): $error';
+    }
+  }
+
+  @override
   Future<bool?> canScheduleExactAlarms() async {
     try {
       // Android 12+ exact alarm izni; USE_EXACT_ALARM manifest'te
@@ -485,14 +521,11 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        // alarmClock modu: MIUI/Xiaomi gibi agresif üreticiler dahil
-        // en geniş korunuma sahip mod (saat uygulaması muamelesi görür).
-        mode: AndroidScheduleMode.alarmClock,
+        // BİRİNCİL: cihazda test edilmiş çalışan mod (setExactAndAllowWhileIdle).
+        mode: AndroidScheduleMode.exactAllowWhileIdle,
       );
       return;
-    } catch (_) {
-      // alarmClock desteklenmezse exact, o da olmazsa inexact ile devam.
-    }
+    } catch (_) {}
     try {
       await _scheduleWithMode(
         id: id,
@@ -502,7 +535,9 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        mode: AndroidScheduleMode.exactAllowWhileIdle,
+        // MIUI bazı durumlarda setAlarmClock'u otostart olmadan düşürüyor;
+        // yalnızca birincil başarısız olursa denenir.
+        mode: AndroidScheduleMode.alarmClock,
       );
       return;
     } catch (_) {}
@@ -570,6 +605,8 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
   Future<void> scheduleTestNotification() async {}
   @override
   Future<void> showTestNotificationNow() async {}
+  @override
+  Future<void> showSoundPreview(String sound) async {}
   @override
   Future<bool?> canScheduleExactAlarms() async => null;
   @override

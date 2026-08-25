@@ -38,6 +38,8 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
 
   @override
   Future<void> showTestNotificationNow() async {}
+  @override
+  Future<void> showSoundPreview(String sound) async {}
 
   @override
   Future<bool?> canScheduleExactAlarms() async => null;
