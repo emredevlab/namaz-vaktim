@@ -2,6 +2,15 @@
 
 Tüm önemli değişiklikler bu dosyada belgelenir. Sürümler [SemVer](https://semver.org/) ilkelerini izler; tarihler YYYY-MM-DD biçimindedir.
 
+## 2.2.2+30 - 2026-08-26
+
+### Bildirim sesleri ve test bildirimi düzeltmeleri
+
+- **Ezan okunmama sorunu giderildi:** Android 8+ kanal ayarları ilk yaratılışta sabitlendiğinden, eski sürümlerde sessiz/yanlış yaratılan bildirim kanalları güncellemeyle düzelmiyordu. Kanal şeması `v3`'e taşındı; eski `prayer_times`/`prayer_times_v2*` kanalları açılışta silinir.
+- **Vakit yaklaşınca ses seçenekleri genişletildi:** "Vakit girince" bölümündeki tüm zil ve ezan sesleri artık "Vakit yaklaşırken" bölümünde de seçilebilir (2 zil + 5 ezan + sistem sesi).
+- **5 saniyelik test bildirimi sağlamlaştırıldı:** Buton önce Android 13+ bildirim iznini kontrol edip ister; planlama sonrası bildirimin sistemde kaydedildiği doğrulanır, olmazsa hata ekranda gösterilir.
+- Teşhis metnine alarm ses seviyesi notu eklendi: sesler ALARM seviyesinden çalar, alarm sesi kısık/sessizse ezan duyulmaz.
+
 ## 1.5.0+7 - 2026-08-24
 
 ### Premium tasarım sistemi

@@ -19,11 +19,17 @@ class NotificationPreferences {
       this.entrySound = 'ezan_vakit'});
 
   /// Yaklaşım bildirimi sesi: res/raw altındaki dosya adı (uzantısız)
-  /// veya 'default' = sistem sesi.
+  /// veya 'default' = sistem sesi. Vakit girişi bölümündeki tüm zil ve
+  /// ezan sesleri burada da seçilebilir.
   static const approachSoundOptions = {
     'notification_chime': 'Zil sesi',
     'chime_soft': 'Yumuşak zil',
+    'ezan_vakit': 'Ezan (Vakit)',
     'ezan_mekke': 'Ezan (Mekke)',
+    'ezan_medine': 'Ezan (Medine)',
+    'ezan_3': 'Ezan (Kayıt 3)',
+    'ezan_4': 'Ezan (Kayıt 4)',
+    'ezan_5': 'Ezan (Kayıt 5)',
     'default': 'Sistem sesi',
   };
 
@@ -295,8 +301,25 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     return List.unmodifiable(_eventLog);
   }
 
-  static const String _channelId = 'prayer_times_v2';
-  static const String _legacyChannelId = 'prayer_times';
+  /// v3: Android 8+ kanal ayarları İLK yaratılışta sabitlenir; eski
+  /// sürümlerde sessiz/yanlış yaratılmış 'prayer_times_v2*' kanalları
+  /// uygulama güncellense bile düzeltilemezdi (ezan okunmama şikayetinin
+  /// kök nedeni). Şema sürümü yükseltilerek temiz kanallar garanti edilir.
+  static const String _channelId = 'prayer_times_v3';
+
+  /// Önceki şemalardan bilinen tüm kanal id'leri; init sırasında silinir.
+  static const List<String> _legacyChannelIds = [
+    'prayer_times',
+    'prayer_times_v2',
+    'prayer_times_v2notification_chime',
+    'prayer_times_v2chime_soft',
+    'prayer_times_v2ezan_vakit',
+    'prayer_times_v2ezan_mekke',
+    'prayer_times_v2ezan_medine',
+    'prayer_times_v2ezan_3',
+    'prayer_times_v2ezan_4',
+    'prayer_times_v2ezan_5',
+  ];
   static const String _channelName = 'Namaz vakitleri';
   static const String _channelDescription = 'Namaz vakti hatırlatmaları';
 
@@ -361,11 +384,14 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
       description: _channelDescription,
       importance: Importance.high,
     ));
-    // Eski sürümlerin sessiz kanalını temizle (kullanıcının bildirim
-    // gölgesinde çöp kalmasın).
-    try {
-      await android?.deleteNotificationChannel(_legacyChannelId);
-    } catch (_) {}
+    // Eski sürümlerin kanallarını temizle: sessiz yaratılmış v2 kanalları
+    // güncellemeyle düzeltilemez; kullanıcıda ezan okunmama sorununa yol
+    // açıyordu. Yeni planlamalar v3 kanallarını kullanır.
+    for (final legacy in _legacyChannelIds) {
+      try {
+        await android?.deleteNotificationChannel(legacy);
+      } catch (_) {}
+    }
     _initialized = true;
     await _logEvent('Zamanlayıcı hazır (kanal: $_channelId)');
   }

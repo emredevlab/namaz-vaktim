@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../core/notification_service.dart';
+import '../../../core/permission_manager.dart';
 import '../../../shared/design/app_theme.dart';
 
 class NotificationSettingsScreen extends ConsumerStatefulWidget {
@@ -270,7 +271,9 @@ class _NotificationSettingsScreenState
             Text(
               'Bildirim gelmiyorsa önce test bildirimi gönderin; sonra '
               'telefonun pil optimizasyonundan uygulamaya "kısıtlama yok" '
-              'verin (Xiaomi/Huawei gibi cihazlarda gerekli).',
+              'verin (Xiaomi/Huawei gibi cihazlarda gerekli). Sesler ALARM '
+              'seviyesinden çalar; alarm sesi kısık veya sessizdeyse ezan '
+              'duyulmaz.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -296,15 +299,40 @@ class _NotificationSettingsScreenState
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
+                      // Android 13+ bildirim izni yoksa planlanan bildirim
+                      // sessizce düşer; önce izni garanti et.
+                      final permissions = ref.read(permissionManagerProvider);
+                      var status = await permissions
+                          .status(AppPermission.notification);
+                      if (status != PermissionStatus.granted &&
+                          status != PermissionStatus.restricted) {
+                        status =
+                            await permissions.request(AppPermission.notification);
+                      }
+                      if (status == PermissionStatus.permanentlyDenied ||
+                          status == PermissionStatus.denied) {
+                        messenger.showSnackBar(const SnackBar(
+                            content: Text(
+                                'Bildirim izni kapalı — izin verilmeden '
+                                'bildirim gelemez. Ayarlar > Uygulama > '
+                                'Bildirimler bölümünden açın.')));
+                        return;
+                      }
                       // Uçtan uca test: gerçek vakit bildirimiyle AYNI
                       // kanal + seçili ses kullanılır.
                       await scheduler.scheduleTestNotification(
                           sound: _entrySound);
+                      final pending = await scheduler.pendingNotifications();
+                      final planned =
+                          pending.any((item) => item.id == 999);
                       if (!mounted) return;
-                      messenger.showSnackBar(const SnackBar(
-                          content: Text(
-                              'Test bildirimi 5 saniye içinde, seçtiğiniz '
-                              'ezan sesiyle gelecek.')));
+                      messenger.showSnackBar(SnackBar(
+                          content: Text(planned
+                              ? 'Planlandı — 5 saniye içinde seçtiğiniz sesle '
+                                  'gelecek. Alarm/kapma sesinin açık ve '
+                                  'sesi yüksek olduğundan emin olun.'
+                              : 'Planlama başarısız: '
+                                  '${scheduler.lastError ?? 'bildirim listede yok'}')));
                       setState(() {});
                     },
                     icon: const Icon(Icons.schedule_send_outlined, size: 18),
