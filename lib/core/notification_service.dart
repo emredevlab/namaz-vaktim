@@ -14,7 +14,7 @@ class NotificationPreferences {
       this.dailyReminder = true,
       this.notifyAtTime = true,
       this.approachSound = 'notification_chime',
-      this.entrySound = 'ezan_mekke'});
+      this.entrySound = 'ezan_vakit'});
 
   /// Yaklaşım bildirimi sesi: res/raw altındaki dosya adı (uzantısız)
   /// veya 'default' = sistem sesi.
@@ -27,6 +27,7 @@ class NotificationPreferences {
 
   /// Vakit girişi bildirimi sesi.
   static const entrySoundOptions = {
+    'ezan_vakit': 'Ezan (Vakit)',
     'ezan_mekke': 'Ezan (Mekke)',
     'ezan_medine': 'Ezan (Medine)',
     'ezan_3': 'Ezan (Kayıt 3)',
@@ -85,7 +86,7 @@ final class NotificationPreferencesStore {
         notifyAtTime: _get(_notifyAtTimeKey) as bool? ?? true,
         approachSound:
             _get(_approachSoundKey) as String? ?? 'notification_chime',
-        entrySound: _get(_entrySoundKey) as String? ?? 'ezan_mekke',
+        entrySound: _get(_entrySoundKey) as String? ?? 'ezan_vakit',
       );
 
   Future<void> write(NotificationPreferences value) async {
