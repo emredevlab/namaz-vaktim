@@ -73,21 +73,31 @@ final class NotificationPreferencesStore {
   static const _notifyAtTimeKey = 'notifications.notify_at_time';
   static const _approachSoundKey = 'notifications.approach_sound';
   static const _entrySoundKey = 'notifications.entry_sound';
+  static const _soundsMigratedKey = 'notifications.sounds_migrated_v2';
 
   final SharedPreferences? _preferences;
   final Map<String, Object?>? _memory;
 
   Object? _get(String key) => _preferences?.get(key) ?? _memory?[key];
 
-  NotificationPreferences read() => NotificationPreferences(
-        enabled: _get(_enabledKey) as bool? ?? true,
-        minutesBefore: _get(_minutesBeforeKey) as int? ?? 10,
-        dailyReminder: _get(_dailyReminderKey) as bool? ?? true,
-        notifyAtTime: _get(_notifyAtTimeKey) as bool? ?? true,
-        approachSound:
-            _get(_approachSoundKey) as String? ?? 'notification_chime',
-        entrySound: _get(_entrySoundKey) as String? ?? 'ezan_vakit',
-      );
+  NotificationPreferences read() {
+    final migrated = _get(_soundsMigratedKey) as bool? ?? false;
+    var entrySound = _get(_entrySoundKey) as String?;
+    // Tek seferlik geçiş: eski varsayılan (ezan_mekke) kullanıcıları yeni
+    // varsayılan ezan_vakit'e taşınır; bilinçli diğer seçimler korunur.
+    if (!migrated && entrySound != null && entrySound == 'ezan_mekke') {
+      entrySound = 'ezan_vakit';
+    }
+    return NotificationPreferences(
+      enabled: _get(_enabledKey) as bool? ?? true,
+      minutesBefore: _get(_minutesBeforeKey) as int? ?? 10,
+      dailyReminder: _get(_dailyReminderKey) as bool? ?? true,
+      notifyAtTime: _get(_notifyAtTimeKey) as bool? ?? true,
+      approachSound:
+          _get(_approachSoundKey) as String? ?? 'notification_chime',
+      entrySound: entrySound ?? 'ezan_vakit',
+    );
+  }
 
   Future<void> write(NotificationPreferences value) async {
     if (_preferences case final preferences?) {
@@ -137,8 +147,10 @@ abstract interface class LocalNotificationScheduler {
     required DateTime anchor,
   });
 
-  /// Teşhis için: ~5 saniya sonra tetiklenen test bildirimi.
-  Future<void> scheduleTestNotification();
+  /// Teşhis için: ~5 saniya sonra tetiklenen test bildirimi. [sound]
+  /// verilirse gerçek vakit bildirimiyle AYNI kanal ve ses kullanılır —
+  /// uçtan uca doğrulama sağlar.
+  Future<void> scheduleTestNotification({String? sound});
 
   /// Teşhis için: alarm/planlama olmadan HEMEN gösterilen bildirim.
   /// Bu görünürse gösterim katmanı sağlamdır; sorun alarm katmanındadır.
@@ -368,16 +380,19 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
   }
 
   @override
-  Future<void> scheduleTestNotification() async {
+  Future<void> scheduleTestNotification({String? sound}) async {
     await _ensureInitialized();
     try {
       await _zonedSchedule(
         id: 999,
         title: 'Test bildirimi (5 sn)',
-        body: 'Bildirim sistemi çalışıyor. Namaz vakitleri de böyle gelecek.',
+        body: sound == null
+            ? 'Bildirim sistemi çalışıyor. Namaz vakitleri de böyle gelecek.'
+            : 'Uçtan uca test: vakit girişi sesiyle gelecek.',
         time: DateTime.now().add(const Duration(seconds: 5)),
         payload: 'route:/prayer-times',
         daily: false,
+        sound: sound,
       );
       _lastError = null;
     } catch (error) {
@@ -603,7 +618,7 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
     required DateTime anchor,
   }) async {}
   @override
-  Future<void> scheduleTestNotification() async {}
+  Future<void> scheduleTestNotification({String? sound}) async {}
   @override
   Future<void> showTestNotificationNow() async {}
   @override

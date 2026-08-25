@@ -296,11 +296,15 @@ class _NotificationSettingsScreenState
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
-                      await scheduler.scheduleTestNotification();
+                      // Uçtan uca test: gerçek vakit bildirimiyle AYNI
+                      // kanal + seçili ses kullanılır.
+                      await scheduler.scheduleTestNotification(
+                          sound: _entrySound);
                       if (!mounted) return;
                       messenger.showSnackBar(const SnackBar(
-                          content:
-                              Text('Test bildirimi 5 saniye içinde gelecek.')));
+                          content: Text(
+                              'Test bildirimi 5 saniye içinde, seçtiğiniz '
+                              'ezan sesiyle gelecek.')));
                       setState(() {});
                     },
                     icon: const Icon(Icons.schedule_send_outlined, size: 18),

@@ -37,7 +37,7 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
       dailyAnchors.add(anchor);
 
   @override
-  Future<void> scheduleTestNotification() async {}
+  Future<void> scheduleTestNotification({String? sound}) async {}
 
   @override
   Future<void> showTestNotificationNow() async {}
