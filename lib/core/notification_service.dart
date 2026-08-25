@@ -439,21 +439,29 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     String? sound,
   }) async {
     // Ses bazlı kanal, planlamadan ÖNCE var olmalı (plugin otomatik
-    // yaratmaz); ses değişince kanal id'si değişir ve Android yeni sesi
-    // uygular.
-    final details = _notificationDetails(sound);
+    // yaratmaz). Kanal kurulumu başarısız olursa sesli kanal yerine
+    // varsayılan kanalla devam edilir — planlama asla engellenmez.
+    var details = _notificationDetails(sound);
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    final androidDetails = details.android;
-    if (android != null && androidDetails != null) {
-      await android.createNotificationChannel(AndroidNotificationChannel(
-        androidDetails.channelId,
-        androidDetails.channelName,
-        description: androidDetails.channelDescription,
-        importance: androidDetails.importance,
-        sound: androidDetails.sound,
-        audioAttributesUsage: androidDetails.audioAttributesUsage,
-      ));
+    if (sound != null && sound != 'default') {
+      try {
+        final androidDetails = details.android;
+        if (android != null && androidDetails != null) {
+          await android.createNotificationChannel(
+              AndroidNotificationChannel(
+            androidDetails.channelId,
+            androidDetails.channelName,
+            description: androidDetails.channelDescription,
+            importance: androidDetails.importance,
+            sound: androidDetails.sound,
+            audioAttributesUsage: androidDetails.audioAttributesUsage,
+          ));
+        }
+      } catch (error) {
+        _lastError = 'Ses kanalı oluşturulamadı ($sound): $error';
+        details = _notificationDetails(null);
+      }
     }
     try {
       await _scheduleWithMode(
