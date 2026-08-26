@@ -290,7 +290,8 @@ class _LocationCardState extends State<LocationCard> {
   PrayerTime? _previousPrayer(DailyPrayerTimes data, PrayerTime next) {
     final now = DateTime.now();
     PrayerTime? previous;
-    for (final time in data.times) {
+    // Güneş hariç beş vakit üzerinden ilerlenir.
+    for (final time in data.prayerTimes) {
       if (time.dateTime.isBefore(now) &&
           (previous == null || time.dateTime.isAfter(previous.dateTime))) {
         previous = time;

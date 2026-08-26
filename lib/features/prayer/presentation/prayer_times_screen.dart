@@ -92,7 +92,7 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
                 onRetry: () => ref.read(prayerControllerProvider).load(),
               )
             else
-              ...?data?.times.map(
+              ...?data?.prayerTimes.map(
                 (item) => _buildPrayerTile(
                   item,
                   next: data.next,
@@ -104,7 +104,7 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
               const SizedBox(height: 26),
               _buildGoldSectionTitle(context, 'Yarın'),
               const SizedBox(height: 12),
-              ...tomorrow.times.map(
+              ...tomorrow.prayerTimes.map(
                 (item) => _buildPrayerTile(
                   item,
                   next: null,

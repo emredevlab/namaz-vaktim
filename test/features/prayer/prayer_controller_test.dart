@@ -357,10 +357,16 @@ void main() {
 
     final tomorrowApproach = scheduler.ids.where((id) => id >= 200 && id < 210);
     final tomorrowOnTime = scheduler.ids.where((id) => id >= 250 && id < 260);
-    expect(tomorrowApproach, hasLength(6),
-        reason: 'Yarının 6 vakidi için yaklaşım bildirimi planlanmalı.');
-    expect(tomorrowOnTime, hasLength(6),
-        reason: 'notifyAtTime varsayılan açık: yarının 6 vakdinde giriş bildirimi.');
+    // Güneş hariç BEŞ vakit: güneş namaz vakti olmadığından planlanmaz.
+    expect(tomorrowApproach, hasLength(5),
+        reason: 'Yarının 5 vakidi için yaklaşım bildirimi planlanmalı.');
+    expect(tomorrowApproach, isNot(contains(201)),
+        reason: 'Güneş (index=1) için bildirim planlanmamalı.');
+    expect(tomorrowOnTime, hasLength(5),
+        reason:
+            'notifyAtTime varsayılan açık: yarının 5 vakdinde giriş bildirimi.');
+    expect(tomorrowOnTime, isNot(contains(251)),
+        reason: 'Güneş (index=1) için giriş bildirimi planlanmamalı.');
     expect(scheduler.ids, containsAll([0, 5, 50, 55]),
         reason: 'Bugünün bildirimleri de planlanmalı.');
     // İlk yüklemede senkron iki kez çalışır (bugün; bugün+yarın) ve günlük
@@ -388,7 +394,7 @@ void main() {
     await controller.load(location: ankara);
     final tomorrowCountAfterFirstLoad =
         scheduler.ids.where((id) => id >= 200).length;
-    expect(tomorrowCountAfterFirstLoad, 12);
+    expect(tomorrowCountAfterFirstLoad, 10);
 
     // Aynı gün içinde sessiz yenileme: cancelAll yarının bildirimlerini
     // silse de cache'ten birlikte yeniden planlanmalılar.
@@ -399,9 +405,9 @@ void main() {
         .skip(entriesBeforeRefresh)
         .where((entry) => entry.id >= 200)
         .length;
-    expect(tomorrowScheduledDuringRefresh, 12,
+    expect(tomorrowScheduledDuringRefresh, 10,
         reason:
-            'Sessiz yenileme yarının bildirimlerini silmemeli (cancelAll + '
-            'birleşik yeniden planlama — son turda 12 yeniden planlanmalı).');
+            'Sessiz yenileme yarının bildirimlerini silmemeli (id bazlı iptal + '
+            'birleşik yeniden planlama — son turda 10 yeniden planlanmalı).');
   });
 }

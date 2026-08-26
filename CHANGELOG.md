@@ -2,6 +2,16 @@
 
 Tüm önemli değişiklikler bu dosyada belgelenir. Sürümler [SemVer](https://semver.org/) ilkelerini izler; tarihler YYYY-MM-DD biçimindedir.
 
+## 2.2.4+32 - 2026-08-26
+
+### Güneş vakti kaldırıldı, yedek bildirim görevi düzeltildi
+
+- **Güneş kaldırıldı:** Güneş namaz vakti olmadığından (astronomik bilgi) vakit listesinden, sıradaki vakit geri sayımından ve tüm bildirimlerden çıkarıldı. Artık yalnızca beş vakit: İmsak, Öğle, İkindi, Akşam, Yatsı.
+- **Yedek bildirim görevi çalışmıyordu (kritik):** Görev, v4 temizliğinde silinen eski `prayer_times_v2ezan_vakit` kanalına gönderim yapıyordu; Android 8+ var olmayan kanala giden bildirimi sessizce düşürür. Artık ana zamanlayıcıyla aynı `v4` kanalını kullanır ve kanal yoksa göndermeden önce oluşturur.
+- **Yedek görev Güneş'i de duyuruyordu:** Gece alınan "Güneş vakti girdi" bildirimi alarm katmanından değil, bu yedek görevden geliyordu — döngü tüm vakit türlerini kapsıyordu. Güneş artık atlanır.
+- Yedek görev kullanıcı tercihlerine saygı duyar: bildirimler kapalıysa veya "vakit girişinde bildir" kapalıysa sessiz kalır.
+- Gece yarısı bildirimleri cihaz üreticisi kısıtından etkilenebilir; pil optimizasyonunda uygulamaya "kısıtlama yok" verilmesi önerilir. Alarm düşerse 15 dakikalık yedek görev telafi eder.
+
 ## 2.2.3+31 - 2026-08-26
 
 ### Test bildirimi ve ses akışı düzeltmeleri

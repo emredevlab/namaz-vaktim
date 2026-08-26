@@ -17,6 +17,13 @@ const String prayerBackupTaskName = 'prayerBackupCheck';
 const String _backupDataKey = 'notification_backup_data';
 const String _lastFiredKey = 'notification_backup_last_fired';
 
+/// Ana zamanlayıcıyla BİREBİR AYNI kanal şeması: eski sürümde ölü
+/// 'prayer_times_v2ezan_vakit' kanalına gönderim yapıyordu; Android 8+
+/// var olmayan kanala giden bildirimi sessizce DÜŞÜRÜYOR — yedek görev
+/// hiç çalışmıyordu. Kanal yoksa aşağıda yeniden oluşturulur.
+const String _backupChannelId = 'prayer_times_v4ezan_vakit';
+const String _backupChannelName = 'Namaz vakitleri';
+
 /// Controller başarılı yüklemede bugünün vakitlerini buraya yazar;
 /// yedek görev bu veriyle çalışır (ağ gerekmez).
 Future<void> writeBackupData(DailyPrayerTimes data) async {
@@ -45,6 +52,15 @@ void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
       final preferences = await SharedPreferences.getInstance();
+
+      // Kullanıcı tercihine saygı: bildirimler kapalıysa veya vakit
+      // girişi bildirimi istenmiyorsa yedek görev sessiz kalır.
+      // (Anahtar adları NotificationPreferencesStore ile aynıdır.)
+      if (!(preferences.getBool('notifications.enabled') ?? true)) return true;
+      if (!(preferences.getBool('notifications.notify_at_time') ?? true)) {
+        return true;
+      }
+
       final raw = preferences.getString(_backupDataKey);
       if (raw == null) return true;
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
@@ -67,8 +83,8 @@ void callbackDispatcher() {
         android: AndroidInitializationSettings('ic_notification'),
       ));
       const androidDetails = AndroidNotificationDetails(
-        'prayer_times_v2ezan_vakit',
-        'Namaz vakitleri',
+        _backupChannelId,
+        _backupChannelName,
         channelDescription: 'Namaz vakti hatırlatmaları',
         importance: Importance.high,
         priority: Priority.high,
@@ -76,8 +92,25 @@ void callbackDispatcher() {
         audioAttributesUsage: AudioAttributesUsage.alarm,
       );
       const details = NotificationDetails(android: androidDetails);
+      // Kanal silinmiş/hiç yoksa göndermeden ÖNCE oluştur; aksi halde
+      // Android 8+ bildirimi düşürür.
+      try {
+        await plugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(const AndroidNotificationChannel(
+              _backupChannelId,
+              _backupChannelName,
+              description: 'Namaz vakti hatırlatmaları',
+              importance: Importance.high,
+              sound: RawResourceAndroidNotificationSound('ezan_vakit'),
+              audioAttributesUsage: AudioAttributesUsage.alarm,
+            ));
+      } catch (_) {}
 
       for (final type in PrayerType.values) {
+        // Güneş namaz vakti değildir; bildirim çıkarılmaz.
+        if (type == PrayerType.gunes) continue;
         final timeRaw = times[type.name];
         if (timeRaw == null) continue;
         final parts = timeRaw.split(':');

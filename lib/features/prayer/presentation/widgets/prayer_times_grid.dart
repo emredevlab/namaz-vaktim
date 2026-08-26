@@ -13,7 +13,8 @@ class PrayerTimesGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final times = data?.times ?? const <PrayerTime>[];
+    // Güneş hariç BEŞ vakit gösterilir; güneş namaz vakti değildir.
+    final times = data?.prayerTimes ?? const <PrayerTime>[];
     final next = data?.next;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

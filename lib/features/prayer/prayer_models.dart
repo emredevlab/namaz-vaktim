@@ -28,9 +28,18 @@ class DailyPrayerTimes {
   final int hijriDay;
   final int hijriMonth;
 
+  /// Güneş çıkarılmış BEŞ vakit: Güneş namaz vakti değildir (astronomik
+  /// bilgi); kullanıcı talebiyle listeden, geri sayımdan ve bildirimlerden
+  /// çıkarıldı. Ham [times] API uyumu için güneşi içerir.
+  List<PrayerTime> get prayerTimes =>
+      times.where((time) => time.type != PrayerType.gunes).toList(
+            growable: false,
+          );
+
+  /// Sıradaki NAMAZ vakti; güneşe denk gelirse bir sonrakine geçer.
   PrayerTime? get next {
     final now = DateTime.now();
-    for (final time in times) {
+    for (final time in prayerTimes) {
       if (time.dateTime.isAfter(now)) return time;
     }
     return null;

@@ -59,7 +59,8 @@ final class PrayerController extends ChangeNotifier {
     int idOffset = 0,
   }) =>
       [
-        for (final prayerTime in data.times)
+        // Güneş namaz vakti olmadığından bildirim planlanmaz.
+        for (final prayerTime in data.prayerTimes)
           PrayerNotificationRequest(
             id: prayerTime.type.index + idOffset,
             title: prayerTypeLabel(prayerTime.type),
