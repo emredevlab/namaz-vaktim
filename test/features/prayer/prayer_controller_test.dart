@@ -396,18 +396,19 @@ void main() {
         scheduler.ids.where((id) => id >= 200).length;
     expect(tomorrowCountAfterFirstLoad, 10);
 
-    // Aynı gün içinde sessiz yenileme: cancelAll yarının bildirimlerini
-    // silse de cache'ten birlikte yeniden planlanmalılar.
+    // Aynı gün içinde sessiz yenileme: plan imzası değişmediği için
+    // iptal/yeniden-planlama HİÇ çalışmaz — ateşlenmek üzere bekleyen
+    // yaklaşım alarmı yanlışlıkla silinemez (öğle yaklaşım kaçağı fix'i).
     final entriesBeforeRefresh = scheduler.entries.length;
+    final cancelsBeforeRefresh = scheduler.cancelCount;
     await controller.load();
 
-    final tomorrowScheduledDuringRefresh = scheduler.entries
-        .skip(entriesBeforeRefresh)
-        .where((entry) => entry.id >= 200)
-        .length;
-    expect(tomorrowScheduledDuringRefresh, 10,
+    expect(scheduler.entries.length, entriesBeforeRefresh,
         reason:
-            'Sessiz yenileme yarının bildirimlerini silmemeli (id bazlı iptal + '
-            'birleşik yeniden planlama — son turda 10 yeniden planlanmalı).');
+            'Plan değişmediğinde dakikalık yenileme bildirimlere dokunmamalı.');
+    expect(scheduler.cancelCount, cancelsBeforeRefresh,
+        reason: 'Plan imzası aynıysa iptal turu da çalışmamalı.');
+    expect(scheduler.ids.where((id) => id >= 200).length, 10,
+        reason: 'Yarının 10 bildirimi planlı olarak kalmalı.');
   });
 }

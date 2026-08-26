@@ -32,6 +32,12 @@ final class PrayerController extends ChangeNotifier {
   /// Planlanmış yarın bildirimlerinin istekleri; synchronize() cancelAll
   /// yaptığından her senkrona bugünle birlikte dahil edilmek zorundalar.
   List<PrayerNotificationRequest>? _cachedTomorrowRequests;
+
+  /// Son senkronlanan planın imzası. Dakikalık yenilemede plan DEĞİŞMEDİYSE
+  /// cancel+yeniden-planlama hiç yapılmaz: her dakikadaki iptal turu,
+  /// yaklaşım alarmını ateşlenmesinden saniyeler önce silebiliyordu
+  /// (öğle vakdinde 'yaklaşım gelmedi ama giriş geldi' şikayetinin kökü).
+  String? _lastNotificationSignature;
   UserLocation _lastLocation = const UserLocation(
     city: 'Nevşehir',
     latitude: 38.6244,
@@ -69,21 +75,34 @@ final class PrayerController extends ChangeNotifier {
       ];
 
   /// Bugün + (varsa) yarının isteklerini birleştirip planlar.
-  /// synchronize() cancelAll ile başladığından yarının istekleri her
-  /// seferinde birlikte yeniden planlanmalı, aksi halde silinirler.
+  /// Plan imzası (vakitler + tercihler) değişmediyse senkron atlanır.
   Future<void> _synchronizeNotifications(
       List<PrayerNotificationRequest> todayRequests) async {
+    final requests = [
+      ...todayRequests,
+      if (_cachedTomorrowRequests != null) ..._cachedTomorrowRequests!,
+    ];
+    final signature = _planSignature(requests);
+    if (signature == _lastNotificationSignature) return;
     try {
-      await _notificationPlanner.synchronize(
-        [
-          ...todayRequests,
-          if (_cachedTomorrowRequests != null) ..._cachedTomorrowRequests!,
-        ],
-        _notificationPreferences,
-      );
+      await _notificationPlanner.synchronize(requests, _notificationPreferences);
+      _lastNotificationSignature = signature;
     } catch (_) {
-      // Bildirim kurulumu başarısız olsa da namaz vakitleri gösterilmelidir.
+      // Bildirim kurulumu başarısız olsa da namaz vakitleri gösterilmelidir;
+      // imza yazılmadığı için bir sonraki dakikada yeniden denenir.
     }
+  }
+
+  /// Vakitler ve bildirim tercihlerinden tek satırlık plan imzası üretir.
+  String _planSignature(List<PrayerNotificationRequest> requests) {
+    final preferences = _notificationPreferences;
+    final preferencePart =
+        '${preferences.enabled}|${preferences.minutesBefore}|${preferences.dailyReminder}|${preferences.notifyAtTime}|${preferences.approachSound}|${preferences.entrySound}';
+    final requestPart = requests
+        .map((request) =>
+            '${request.id}:${request.prayerTime.millisecondsSinceEpoch}:${request.title}')
+        .join(',');
+    return '$preferencePart#$requestPart';
   }
 
   /// [location] verilmezse en son kullanılan konum yeniden kullanılır;

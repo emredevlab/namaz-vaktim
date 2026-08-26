@@ -2,6 +2,14 @@
 
 Tüm önemli değişiklikler bu dosyada belgelenir. Sürümler [SemVer](https://semver.org/) ilkelerini izler; tarihler YYYY-MM-DD biçimindedir.
 
+## 2.2.5+33 - 2026-08-26
+
+### Yaklaşım bildirimi kaybı düzeltildi (plan imzası)
+
+- **"Vakit yaklaşınca gelmedi ama vakit girince geldi" sorunu:** Dakikalık otomatik yenileme her turda TÜM planlı bildirimleri iptal edip yeniden kuruyordu. Tur tam yaklaşım alarmının saatine denk gelirse alarm ateşlenmeden siliniyor, yeniden planlama da "saat geçmiş" diyerek atlanıyordu.
+- Artık plan **imzası** (vakitler + bildirim tercihleri) değişmediyse dakikalık yenileme bildirimlere hiç dokunmaz. Senkron yalnızca: uygulama açılışı, şehir/konum değişimi, tercih değişimi, gün değişimi veya veri değişiminde çalışır.
+- Bekleyen alarmlar böylece dakika turundan bağımsız olarak güvenle bekler.
+
 ## 2.2.4+32 - 2026-08-26
 
 ### Güneş vakti kaldırıldı, yedek bildirim görevi düzeltildi
