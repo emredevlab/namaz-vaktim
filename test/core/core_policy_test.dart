@@ -18,13 +18,14 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
   @override
   Future<void> cancelByIds(Set<int> ids) async => cancelledIds.addAll(ids);
 
-  @override
+@override
   Future<void> schedulePrayer({
     required int id,
     required String title,
     required String body,
     required DateTime time,
     String? sound,
+    bool isEntry = false,
   }) async {
     times.add(time);
     sounds.add(sound);

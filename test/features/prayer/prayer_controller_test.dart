@@ -24,6 +24,7 @@ final class _RecordingScheduler implements LocalNotificationScheduler {
     required String body,
     required DateTime time,
     String? sound,
+    bool isEntry = false,
   }) async =>
       entries.add((id: id, title: title, body: body, time: time));
 
