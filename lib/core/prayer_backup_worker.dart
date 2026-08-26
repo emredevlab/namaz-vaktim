@@ -17,11 +17,6 @@ const String prayerBackupTaskName = 'prayerBackupCheck';
 const String _backupDataKey = 'notification_backup_data';
 const String _lastFiredKey = 'notification_backup_last_fired';
 
-/// Ana zamanlayıcıyla BİREBİR AYNI kanal şeması: eski sürümde ölü
-/// 'prayer_times_v2ezan_vakit' kanalına gönderim yapıyordu; Android 8+
-/// var olmayan kanala giden bildirimi sessizce DÜŞÜRÜYOR — yedek görev
-/// hiç çalışmıyordu. Kanal yoksa aşağıda yeniden oluşturulur.
-const String _backupChannelId = 'prayer_times_v4ezan_vakit';
 const String _backupChannelName = 'Namaz vakitleri';
 
 /// Controller başarılı yüklemede bugünün vakitlerini buraya yazar;
@@ -82,29 +77,69 @@ void callbackDispatcher() {
       await plugin.initialize(const InitializationSettings(
         android: AndroidInitializationSettings('ic_notification'),
       ));
-      const androidDetails = AndroidNotificationDetails(
-        _backupChannelId,
-        _backupChannelName,
-        channelDescription: 'Namaz vakti hatırlatmaları',
-        importance: Importance.high,
-        priority: Priority.high,
-        sound: RawResourceAndroidNotificationSound('ezan_vakit'),
-        audioAttributesUsage: AudioAttributesUsage.alarm,
-      );
-      const details = NotificationDetails(android: androidDetails);
-      // Kanal silinmiş/hiç yoksa göndermeden ÖNCE oluştur; aksi halde
-      // Android 8+ bildirimi düşürür.
+
+      // Tercihleri oku — yaklaşım yedeği için minutesBefore/approachSound lazım.
+      final minutesBefore = preferences.getInt('notifications.minutes_before') ?? 10;
+      final approachSound =
+          preferences.getString('notifications.approach_sound') ?? 'notification_chime';
+      final entrySound =
+          preferences.getString('notifications.entry_sound') ?? 'ezan_vakit';
+
+      String sanitizeSound(String s) =>
+          s.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      bool isAdhan(String s) => s.startsWith('ezan');
+
+      String channelIdFor(String sound) {
+        if (sound == 'default') return 'prayer_times_v4';
+        return 'prayer_times_v4${sanitizeSound(sound)}';
+      }
+
+      Future<NotificationDetails> detailsFor(String sound) async {
+        final channelId = channelIdFor(sound);
+        final adhan = isAdhan(sound);
+        final rawSound = sound == 'default'
+            ? null
+            : RawResourceAndroidNotificationSound(sound);
+        final androidDetails = AndroidNotificationDetails(
+          channelId,
+          _backupChannelName,
+          channelDescription: 'Namaz vakti hatırlatmaları',
+          importance: Importance.high,
+          priority: Priority.high,
+          sound: rawSound,
+          audioAttributesUsage: adhan
+              ? AudioAttributesUsage.alarm
+              : AudioAttributesUsage.notification,
+        );
+        try {
+          await plugin
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>()
+              ?.createNotificationChannel(AndroidNotificationChannel(
+                channelId,
+                _backupChannelName,
+                description: 'Namaz vakti hatırlatmaları',
+                importance: Importance.high,
+                sound: rawSound,
+                audioAttributesUsage: adhan
+                    ? AudioAttributesUsage.alarm
+                    : AudioAttributesUsage.notification,
+              ));
+        } catch (_) {}
+        return NotificationDetails(android: androidDetails);
+      }
+
+      // En az bir kez v4 ana kanalı garanti et (entry/approach kanalları
+      // ayrıca yukarıda oluşturulur).
       try {
         await plugin
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>()
             ?.createNotificationChannel(const AndroidNotificationChannel(
-              _backupChannelId,
+              'prayer_times_v4',
               _backupChannelName,
               description: 'Namaz vakti hatırlatmaları',
               importance: Importance.high,
-              sound: RawResourceAndroidNotificationSound('ezan_vakit'),
-              audioAttributesUsage: AudioAttributesUsage.alarm,
             ));
       } catch (_) {}
 
@@ -117,16 +152,41 @@ void callbackDispatcher() {
         if (parts.length < 2) continue;
         final prayer = DateTime(now.year, now.month, now.day,
             int.parse(parts[0]), int.parse(parts[1]));
+        final approach = prayer.subtract(Duration(minutes: minutesBefore));
+
+        // 1) Yaklaşım yedeği: "vakti yaklaşıyor" — OEM alarmı sildiyse 15 dk içinde telafi.
+        final sinceApproach = now.difference(approach);
+        if (sinceApproach.inMinutes >= 0 && sinceApproach.inMinutes <= 15) {
+          final firedKey = '${type.name}_approach_$today';
+          // lastFired tek bir string tuttuğu için güncel değeri her tur yeniden oku
+          final currentLast = preferences.getString(_lastFiredKey);
+          if (currentLast != firedKey) {
+            final approachDetails = await detailsFor(approachSound);
+            await plugin.show(
+              400 + type.index,
+              prayerTypeLabel(type),
+              'Namaz vaktiniz yaklaşıyor.',
+              approachDetails,
+              payload: 'route:/prayer-times',
+            );
+            await preferences.setString(_lastFiredKey, firedKey);
+          }
+        }
+
+        // 2) Vakit girişi yedeği.
         final since = now.difference(prayer);
-        // Vakti son 15 dakika içinde girdiyse ve henüz bildirilmediyse gönder.
         if (since.inMinutes >= 0 && since.inMinutes <= 15) {
-          final firedKey = '${type.name}_$today';
-          if (lastFired == firedKey) continue;
+          final firedKey = '${type.name}_entry_$today';
+          final currentLast = preferences.getString(_lastFiredKey);
+          if (currentLast == firedKey) continue;
+          // Geriye uyum: eski tek-anahtarlı kaydı da kontrol et
+          if (lastFired == '${type.name}_$today') continue;
+          final entryDetails = await detailsFor(entrySound);
           await plugin.show(
             300 + type.index,
             prayerTypeLabel(type),
             '${prayerTypeLabel(type)} vakti girdi.',
-            details,
+            entryDetails,
             payload: 'route:/prayer-times',
           );
           await preferences.setString(_lastFiredKey, firedKey);

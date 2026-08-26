@@ -38,6 +38,7 @@ final class PrayerController extends ChangeNotifier {
   /// yaklaşım alarmını ateşlenmesinden saniyeler önce silebiliyordu
   /// (öğle vakdinde 'yaklaşım gelmedi ama giriş geldi' şikayetinin kökü).
   String? _lastNotificationSignature;
+  DateTime? _lastScheduleTime;
   UserLocation _lastLocation = const UserLocation(
     city: 'Nevşehir',
     latitude: 38.6244,
@@ -75,7 +76,11 @@ final class PrayerController extends ChangeNotifier {
       ];
 
   /// Bugün + (varsa) yarının isteklerini birleştirip planlar.
-  /// Plan imzası (vakitler + tercihler) değişmediyse senkron atlanır.
+  /// Plan imzası (vakitler + tercihler) değişmediyse senkron dakikada bir
+  /// atlanır — ancak OEM (Xiaomi vb.) alarmları sessizce silebildiği için
+  /// 30 dakikada bir "healing" senkronu zorla çalıştırılır; aksi halde
+  /// yaklaşım bildirimi bir kez silindi mi bir daha kurulmuyordu
+  /// (ikindi yaklaşım kaçağı).
   Future<void> _synchronizeNotifications(
       List<PrayerNotificationRequest> todayRequests) async {
     final requests = [
@@ -83,10 +88,14 @@ final class PrayerController extends ChangeNotifier {
       if (_cachedTomorrowRequests != null) ..._cachedTomorrowRequests!,
     ];
     final signature = _planSignature(requests);
-    if (signature == _lastNotificationSignature) return;
+    final now = DateTime.now();
+    final isHealingDue = _lastScheduleTime != null &&
+        now.difference(_lastScheduleTime!) > const Duration(minutes: 30);
+    if (signature == _lastNotificationSignature && !isHealingDue) return;
     try {
       await _notificationPlanner.synchronize(requests, _notificationPreferences);
       _lastNotificationSignature = signature;
+      _lastScheduleTime = now;
     } catch (_) {
       // Bildirim kurulumu başarısız olsa da namaz vakitleri gösterilmelidir;
       // imza yazılmadığı için bir sonraki dakikada yeniden denenir.

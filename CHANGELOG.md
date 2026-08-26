@@ -2,6 +2,13 @@
 
 Tüm önemli değişiklikler bu dosyada belgelenir. Sürümler [SemVer](https://semver.org/) ilkelerini izler; tarihler YYYY-MM-DD biçimindedir.
 
+## 2.2.6+34 - 2026-08-26
+
+### İkindi yaklaşım bildirimi düzeltildi
+
+- **"Yaklaşım gelmedi, giriş uygulamaya girince geldi":** Dakikalık imza kontrolü OEM tarafından silinen alarmları onarmıyordu — yaklaşım bir kez kaçtı mı bir daha kurulmuyordu. Artık plan değişmese bile **30 dakikada bir healing senkronu** zorla çalışır ve silinen alarmları yeniden kurar.
+- **Yedek görev artık yaklaşım için de çalışıyor:** Daha önce yedek görev yalnızca "vakti girdi" için telafi gönderiyordu; yaklaşım bildirimi OEM tarafından silinince tamamen kayboluyordu. Artık yaklaşım da (`minutesBefore` + `approachSound` tercihine göre) 15 dk penceresinde yedek kanaldan gönderilir; her iki tür için ayrı kanal ve ayrı dedup anahtarı kullanılır.
+
 ## 2.2.5+33 - 2026-08-26
 
 ### Yaklaşım bildirimi kaybı düzeltildi (plan imzası)
