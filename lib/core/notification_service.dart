@@ -647,6 +647,10 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         details = _notificationDetails(null);
       }
     }
+    // alarmClock (setAlarmClock) ÖNCE: kullanıcıya görünen tam zamanlı
+    // alarm (çalar saat, ezan) için tasarlanmış, Doze'da batch'lenmez.
+    // exactAllowWhileIdle ikinci fallback olarak korur (alarmClock bazı
+    // cihazlarda kullanıcı onayı isteyebilir).
     try {
       await _scheduleWithMode(
         id: id,
@@ -656,14 +660,12 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        // exactAllowWhileIdle: Doze'da da tam zamanlı çalışır; Android
-        // uygulama başına ~9 dk bir exact alarm izin verir.
-        mode: AndroidScheduleMode.exactAllowWhileIdle,
+        mode: AndroidScheduleMode.alarmClock,
       );
-      await _logEvent('Planlandı (exact) id=$id');
+      await _logEvent('Planlandı (alarmClock) id=$id');
       return;
     } catch (e) {
-      await _logEvent('exactAllowWhileIdle başarısız id=$id: $e');
+      await _logEvent('alarmClock başarısız id=$id: $e');
     }
     try {
       await _scheduleWithMode(
@@ -674,13 +676,12 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        // Fallback: alarmClock
-        mode: AndroidScheduleMode.alarmClock,
+        mode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-      await _logEvent('Planlandı (alarmClock) id=$id');
+      await _logEvent('Planlandı (exact) id=$id');
       return;
     } catch (e) {
-      await _logEvent('alarmClock başarısız id=$id: $e');
+      await _logEvent('exactAllowWhileIdle başarısız id=$id: $e');
     }
     _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
     await _scheduleWithMode(
