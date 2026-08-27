@@ -145,8 +145,7 @@ abstract interface class LocalNotificationScheduler {
       required String title,
       required String body,
       required DateTime time,
-      String? sound,
-      bool isEntry = false});
+      String? sound});
 
   /// [anchor] zamanının saat/dakika bileşeniyle her gün tekrarlanan bildirim.
   Future<void> scheduleDailyReminder({
@@ -248,7 +247,6 @@ final class PrayerNotificationPlanner {
           body: '${request.title} vakti girdi.',
           time: request.prayerTime,
           sound: preferences.entrySound,
-          isEntry: true,
         );
       }
     }
@@ -436,7 +434,6 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required String body,
     required DateTime time,
     String? sound,
-    bool isEntry = false,
   }) async {
     await _ensureInitialized();
     if (!time.isAfter(DateTime.now())) {
@@ -452,11 +449,10 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: 'route:/prayer-times',
         daily: false,
         sound: sound,
-        isEntry: isEntry,
       );
       _lastError = null;
       await _logEvent(
-          'Planlandı: id=$id ses=$sound saat=${time.hour}:${time.minute.toString().padLeft(2, '0')} entry=$isEntry');
+          'Planlandı: id=$id ses=$sound saat=${time.hour}:${time.minute.toString().padLeft(2, '0')}');
     } catch (error) {
       _lastError = 'schedulePrayer($id): $error';
       await _logEvent('HATA schedulePrayer($id): $error');
@@ -623,7 +619,7 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
     required String payload,
     required bool daily,
     String? sound,
-    bool isEntry = false,
+    // isEntry parametresi kaldırıldı - hem approach hem entry exactAllowWhileIdle kullanacak
   }) async {
     // Ses bazlı kanal, planlamadan ÖNCE var olmalı (plugin otomatik
     // yaratmaz). Kanal kurulumu başarısız olursa sesli kanal yerine
@@ -660,17 +656,14 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        // VAKT GİRİŞİ (ezan) bildirimleri için alarmClock ÖNCE dene:
-        // exactAllowWhileIdle Doze'da batch'lenip 5-9 dk gecikebilir;
-        // alarmClock (setAlarmClock) kullanıcıya görünen alarm gibi tam saatte tetiklenir.
-        mode: isEntry
-            ? AndroidScheduleMode.alarmClock
-            : AndroidScheduleMode.exactAllowWhileIdle,
+        // exactAllowWhileIdle: Doze'da da tam zamanlı çalışır; Android
+        // uygulama başına ~9 dk bir exact alarm izin verir.
+        mode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-      await _logEvent('Planlandı (${isEntry ? 'alarmClock' : 'exact'}) id=$id');
+      await _logEvent('Planlandı (exact) id=$id');
       return;
     } catch (e) {
-      await _logEvent('${isEntry ? 'alarmClock' : 'exactAllowWhileIdle'} başarısız id=$id: $e');
+      await _logEvent('exactAllowWhileIdle başarısız id=$id: $e');
     }
     try {
       await _scheduleWithMode(
@@ -681,15 +674,13 @@ final class AndroidNotificationScheduler implements LocalNotificationScheduler {
         payload: payload,
         daily: daily,
         details: details,
-        // Fallback: diğer mod
-        mode: isEntry
-            ? AndroidScheduleMode.exactAllowWhileIdle
-            : AndroidScheduleMode.alarmClock,
+        // Fallback: alarmClock
+        mode: AndroidScheduleMode.alarmClock,
       );
-      await _logEvent('Planlandı (${isEntry ? 'exact' : 'alarmClock'}) id=$id');
+      await _logEvent('Planlandı (alarmClock) id=$id');
       return;
     } catch (e) {
-      await _logEvent('${isEntry ? 'exactAllowWhileIdle' : 'alarmClock'} başarısız id=$id: $e');
+      await _logEvent('alarmClock başarısız id=$id: $e');
     }
     _lastError = 'Exact alarm yok, inexact modda planlandı (gecikebilir).';
     await _scheduleWithMode(
@@ -744,8 +735,7 @@ final class NoopNotificationScheduler implements LocalNotificationScheduler {
       required String title,
       required String body,
       required DateTime time,
-      String? sound,
-      bool isEntry = false}) async {}
+      String? sound}) async {}
   @override
   Future<void> scheduleDailyReminder({
     required int id,
